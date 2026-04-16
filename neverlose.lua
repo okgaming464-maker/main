@@ -1,2020 +1,1915 @@
---[[
-    NeverLoseUI v3 - A Premium Roblox UI Library
-    Features: Universal Keybind System, Live Theme Editor, Inertia Draggable, Polished Aesthetic
-    
-    Changelog v3:
-    - Fixed section frame layout bugs and incorrect parent references
-    - Extracted section elements into modular factory functions
-    - Added comprehensive error handling and input validation
-    - Fixed dialog animation and overlay behavior
-    - Improved dropdown UX with proper open/close behavior
-    - Added full config save/load with UI state restoration
-    - Optimized theme updates with debounced batched tweens
-    - Added documentation and improved code organization
-]]
+local function trackConn(conn) return conn end
 
-local NeverLoseUI = {}
-NeverLoseUI.__index = NeverLoseUI
-
--- Services
-local TweenService = game:GetService("TweenService")
-local UserInputService = game:GetService("UserInputService")
-local RunService = game:GetService("RunService")
-local HttpService = game:GetService("HttpService")
-local CoreGui = game:GetService("CoreGui")
-local Players = game:GetService("Players")
-local Stats = game:GetService("Stats")
-
--- Theme Definitions
-local THEMES = {
-    Midnight = {
-        Background = Color3.fromRGB(15, 15, 20),
-        Surface = Color3.fromRGB(24, 24, 32),
-        SurfaceAlt = Color3.fromRGB(32, 32, 42),
-        Border = Color3.fromRGB(45, 45, 60),
-        Accent = Color3.fromRGB(99, 102, 241),
-        TextPrimary = Color3.fromRGB(250, 250, 255),
-        TextSecondary = Color3.fromRGB(160, 160, 175),
-        TitleBar = Color3.fromRGB(20, 20, 26),
-        Sidebar = Color3.fromRGB(18, 18, 24),
-        Danger = Color3.fromRGB(239, 68, 68),
-        Success = Color3.fromRGB(34, 197, 94),
-        Warning = Color3.fromRGB(234, 179, 8),
+shared.Lucent = {
+    ["Global"] = {
+        ["Mod Detector"] = false,
+        ["Key"] = "keyhere"
     },
-    Crimson = {
-        Background = Color3.fromRGB(16, 10, 10),
-        Surface = Color3.fromRGB(24, 16, 16),
-        SurfaceAlt = Color3.fromRGB(32, 22, 22),
-        Border = Color3.fromRGB(50, 30, 30),
-        Accent = Color3.fromRGB(220, 38, 38),
-        TextPrimary = Color3.fromRGB(255, 240, 240),
-        TextSecondary = Color3.fromRGB(180, 140, 140),
-        TitleBar = Color3.fromRGB(22, 12, 12),
-        Sidebar = Color3.fromRGB(20, 14, 14),
-        Danger = Color3.fromRGB(248, 113, 113),
-        Success = Color3.fromRGB(34, 197, 94),
-        Warning = Color3.fromRGB(250, 204, 21),
+    ["Binds"] = {
+        ["Select"]        = "C",   -- keybind to select/deselect target (Select mode only)
+        ["Camera Aimbot"] = "C",   -- keybind for camera aimbot (Toggle/Hold mode)
+        ["Triggerbot"]    = "T",   -- keybind for triggerbot (Toggle/Hold mode)
+        ["Speed"]         = "V",   -- keybind to toggle speed modifications
+        ["ESP"]           = "P",   -- keybind to toggle ESP
+        ["Super Jump"]    = "Z",   -- keybind to toggle super jump
     },
-    Emerald = {
-        Background = Color3.fromRGB(10, 16, 12),
-        Surface = Color3.fromRGB(16, 24, 18),
-        SurfaceAlt = Color3.fromRGB(22, 32, 24),
-        Border = Color3.fromRGB(35, 50, 40),
-        Accent = Color3.fromRGB(16, 185, 129),
-        TextPrimary = Color3.fromRGB(240, 255, 245),
-        TextSecondary = Color3.fromRGB(140, 180, 150),
-        TitleBar = Color3.fromRGB(12, 20, 16),
-        Sidebar = Color3.fromRGB(14, 22, 18),
-        Danger = Color3.fromRGB(239, 68, 68),
-        Success = Color3.fromRGB(52, 211, 153),
-        Warning = Color3.fromRGB(234, 179, 8),
+    ["Select Only Features"] = {
+        ["Force Hit"]     = false, -- always aim at head regardless of hitpart
+        ["Force Trigger"] = false  -- triggerbot fires regardless of FOV
     },
-    Amethyst = {
-        Background = Color3.fromRGB(14, 10, 18),
-        Surface = Color3.fromRGB(22, 16, 28),
-        SurfaceAlt = Color3.fromRGB(30, 22, 38),
-        Border = Color3.fromRGB(45, 30, 55),
-        Accent = Color3.fromRGB(168, 85, 247),
-        TextPrimary = Color3.fromRGB(250, 240, 255),
-        TextSecondary = Color3.fromRGB(170, 150, 180),
-        TitleBar = Color3.fromRGB(18, 12, 22),
-        Sidebar = Color3.fromRGB(20, 14, 26),
-        Danger = Color3.fromRGB(239, 68, 68),
-        Success = Color3.fromRGB(34, 197, 94),
-        Warning = Color3.fromRGB(234, 179, 8),
+    ["Targeting"] = {
+        ["Target Mode"] = "Automatic" -- "Automatic" (closest to you) | "Select" (press keybind to lock)
     },
-    Ocean = {
-        Background = Color3.fromRGB(10, 15, 20),
-        Surface = Color3.fromRGB(16, 22, 30),
-        SurfaceAlt = Color3.fromRGB(22, 30, 40),
-        Border = Color3.fromRGB(30, 45, 60),
-        Accent = Color3.fromRGB(6, 182, 212),
-        TextPrimary = Color3.fromRGB(240, 250, 255),
-        TextSecondary = Color3.fromRGB(140, 170, 190),
-        TitleBar = Color3.fromRGB(12, 18, 24),
-        Sidebar = Color3.fromRGB(14, 20, 28),
-        Danger = Color3.fromRGB(239, 68, 68),
-        Success = Color3.fromRGB(34, 197, 94),
-        Warning = Color3.fromRGB(234, 179, 8),
+    ["Checks"] = {
+        ["Visible Check"]    = true,  -- only target players you can see
+        ["Knock Check"]      = true,  -- skip knocked players
+        ["Crew Check"]       = true,  -- skip crewmates
+        ["Self Knock Check"] = true,  -- stop aimbot when you're knocked
+        ["Forcefield Check"] = true   -- skip players with forcefield
     },
-    Sunset = {
-        Background = Color3.fromRGB(20, 14, 10),
-        Surface = Color3.fromRGB(30, 20, 16),
-        SurfaceAlt = Color3.fromRGB(40, 28, 22),
-        Border = Color3.fromRGB(60, 40, 30),
-        Accent = Color3.fromRGB(249, 115, 22),
-        TextPrimary = Color3.fromRGB(255, 245, 240),
-        TextSecondary = Color3.fromRGB(190, 160, 140),
-        TitleBar = Color3.fromRGB(24, 16, 12),
-        Sidebar = Color3.fromRGB(26, 18, 14),
-        Danger = Color3.fromRGB(239, 68, 68),
-        Success = Color3.fromRGB(34, 197, 94),
-        Warning = Color3.fromRGB(250, 204, 21),
+    ["Silent Aimbot"] = {
+        ["Enabled"] = true,
+        ["HitPart"] = "Closest Point", -- "Closest Point" | "Closest Part" | "Nearest Point" | "Head" | "UpperTorso"
+        ["Closest Point"] = {
+            ["Mode"]    = "Advanced",  -- "Basic" | "Advanced"
+            ["Scale"]   = 0.12,        -- how far in from part edge (0 = edge, 1 = center)
+            ["Density"] = 3            -- grid resolution (higher = more accurate, more CPU)
+        },
+        ["Prediction"] = { ["X"] = 0, ["Y"] = 0, ["Z"] = 0 }, -- written by Ping Prediction automatically
+        ["Client Bullet Redirection"] = {
+            ["Enabled"] = false,
+            ["Prediction"] = { ["X"] = 0, ["Y"] = 0, ["Z"] = 0 },
+            ["Weapons"] = {}
+        },
+        ["Bullet Projection"] = {
+            ["Enabled"]  = false,      -- projects aim point forward along bullet travel direction
+            ["Distance"] = 2.0         -- studs to project forward (helps with fast-moving targets)
+        },
+        ["Clamp Y"] = {
+            ["Enabled"]       = true,  -- prevents bullets going underground
+            ["Dynamic"]       = true,  -- adjusts clamp based on target velocity
+            ["Value"]         = 0.5,   -- static clamp offset (used when Dynamic = false)
+            ["Smooth"]        = true,  -- smooth the correction instead of snapping
+            ["Smooth Factor"] = 0.60
+        },
+        ["Distance Check"] = { ["Enabled"] = true, ["Max Distance"] = 350 },
+        ["FOV"] = {
+            ["Show FOV"] = false,
+            ["X Left"]  = 3, ["X Right"]  = 3,
+            ["Y Upper"] = 2, ["Y Lower"]  = 2,
+            ["Z Left"]  = 2, ["Z Right"]  = 2
+        },
+        ["Weapon Configuration"] = { ["Enabled"] = false }
     },
-    Rose = {
-        Background = Color3.fromRGB(18, 10, 14),
-        Surface = Color3.fromRGB(28, 16, 22),
-        SurfaceAlt = Color3.fromRGB(38, 24, 30),
-        Border = Color3.fromRGB(55, 30, 45),
-        Accent = Color3.fromRGB(236, 72, 153),
-        TextPrimary = Color3.fromRGB(255, 240, 248),
-        TextSecondary = Color3.fromRGB(180, 150, 165),
-        TitleBar = Color3.fromRGB(22, 12, 18),
-        Sidebar = Color3.fromRGB(24, 14, 20),
-        Danger = Color3.fromRGB(239, 68, 68),
-        Success = Color3.fromRGB(34, 197, 94),
-        Warning = Color3.fromRGB(234, 179, 8),
-    },
-    Monochrome = {
-        Background = Color3.fromRGB(12, 12, 12),
-        Surface = Color3.fromRGB(20, 20, 20),
-        SurfaceAlt = Color3.fromRGB(28, 28, 28),
-        Border = Color3.fromRGB(45, 45, 45),
-        Accent = Color3.fromRGB(240, 240, 240),
-        TextPrimary = Color3.fromRGB(250, 250, 250),
-        TextSecondary = Color3.fromRGB(150, 150, 150),
-        TitleBar = Color3.fromRGB(16, 16, 16),
-        Sidebar = Color3.fromRGB(18, 18, 18),
-        Danger = Color3.fromRGB(239, 68, 68),
-        Success = Color3.fromRGB(34, 197, 94),
-        Warning = Color3.fromRGB(234, 179, 8),
-    }
-}
-
-local THEME_PRESETS = {"Midnight", "Crimson", "Emerald", "Amethyst", "Ocean", "Sunset", "Rose", "Monochrome"}
-
--- Font Definitions
-local FONT = Enum.Font.GothamMedium
-local FONT_BOLD = Enum.Font.GothamBold
-local FONT_SEMI = Enum.Font.Gotham
-
---[[ Utility Functions ]]
-
-local function Tween(obj, props, time, style, dir)
-    local tweenInfo = TweenInfo.new(time or 0.15, style or Enum.EasingStyle.Quad, dir or Enum.EasingDirection.Out)
-    return TweenService:Create(obj, tweenInfo, props)
-end
-
-local function Spring(obj, props, time)
-    local tweenInfo = TweenInfo.new(time or 0.4, Enum.EasingStyle.Back, Enum.EasingDirection.Out, 0, false, 0)
-    return TweenService:Create(obj, tweenInfo, props)
-end
-
-local function Create(class, props, children)
-    local inst = Instance.new(class)
-    if props then
-        for k, v in pairs(props) do
-            inst[k] = v
-        end
-    end
-    if children then
-        for _, child in ipairs(children) do
-            child.Parent = inst
-        end
-    end
-    return inst
-end
-
-local function Corner(radius)
-    return Create("UICorner", {CornerRadius = UDim.new(0, radius or 4)})
-end
-
-local function Stroke(color, thickness)
-    return Create("UIStroke", {Color = color, Thickness = thickness or 1})
-end
-
-local function Padding(t, b, l, r)
-    return Create("UIPadding", {
-        PaddingTop = UDim.new(0, t or 0),
-        PaddingBottom = UDim.new(0, b or 0),
-        PaddingLeft = UDim.new(0, l or 0),
-        PaddingRight = UDim.new(0, r or 0)
-    })
-end
-
-local function ColorToHex(color)
-    if typeof(color) ~= "Color3" then
-        return "#000000"
-    end
-    return string.format("#%02X%02X%02X", math.floor(color.R * 255), math.floor(color.G * 255), math.floor(color.B * 255))
-end
-
-local function HexToColor(hex)
-    if typeof(hex) ~= "string" then
-        return Color3.new(1, 1, 1)
-    end
-    hex = hex:gsub("#", "")
-    if #hex ~= 6 then
-        return Color3.new(1, 1, 1)
-    end
-    local success, r = pcall(tonumber, "0x" .. hex:sub(1, 2))
-    local success2, g = pcall(tonumber, "0x" .. hex:sub(3, 4))
-    local success3, b = pcall(tonumber, "0x" .. hex:sub(5, 6))
-    if success and success2 and success3 then
-        return Color3.fromRGB(r, g, b)
-    end
-    return Color3.new(1, 1, 1)
-end
-
---[[ Draggable with Inertia ]]
-
-local function MakeDraggable(frame, handle)
-    if not frame or not handle then return end
-    
-    local dragging = false
-    local dragInput = nil
-    local dragStart = nil
-    local startPos = nil
-    local momentum = Vector2.new(0, 0)
-    local lastMousePos = Vector2.new(0, 0)
-    local damping = 0.85
-
-    handle.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            dragStart = input.Position
-            startPos = frame.Position
-
-            input.Changed:Connect(function()
-                if input.UserInputState == Enum.UserInputState.End then
-                    dragging = false
-                end
-            end)
-        end
-    end)
-
-    handle.InputChanged:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseMovement then
-            dragInput = input
-        end
-    end)
-
-    UserInputService.InputChanged:Connect(function(input)
-        if input == dragInput and dragging then
-            local delta = input.Position - dragStart
-            frame.Position = UDim2.new(
-                startPos.X.Scale,
-                startPos.X.Offset + delta.X,
-                startPos.Y.Scale,
-                startPos.Y.Offset + delta.Y
-            )
-            momentum = Vector2.new(
-                input.Position.X - lastMousePos.X,
-                input.Position.Y - lastMousePos.Y
-            )
-            lastMousePos = Vector2.new(input.Position.X, input.Position.Y)
-        end
-    end)
-
-    RunService.RenderStepped:Connect(function()
-        if not dragging and (math.abs(momentum.X) > 0.1 or math.abs(momentum.Y) > 0.1) then
-            momentum = momentum * damping
-            local currentPos = frame.Position
-            frame.Position = UDim2.new(
-                currentPos.X.Scale,
-                currentPos.X.Offset + momentum.X,
-                currentPos.Y.Scale,
-                currentPos.Y.Offset + momentum.Y
-            )
-        end
-    end)
-end
-
---[[ Universal Keybind Formatting ]]
-
-local KeyNames = {
-    [Enum.KeyCode.RightShift] = "RShift",
-    [Enum.KeyCode.LeftShift] = "LShift",
-    [Enum.KeyCode.RightControl] = "RCtrl",
-    [Enum.KeyCode.LeftControl] = "LCtrl",
-    [Enum.KeyCode.RightAlt] = "RAlt",
-    [Enum.KeyCode.LeftAlt] = "LAlt",
-    [Enum.KeyCode.Insert] = "Ins",
-    [Enum.KeyCode.Delete] = "Del",
-    [Enum.KeyCode.Backspace] = "Bckspc",
-    [Enum.KeyCode.Escape] = "Esc",
-    [Enum.UserInputType.MouseButton1] = "MB1",
-    [Enum.UserInputType.MouseButton2] = "MB2",
-    [Enum.UserInputType.MouseButton3] = "MB3",
-}
-
-local function GetKeyName(key)
-    if not key then return "None" end
-    if KeyNames[key] then return KeyNames[key] end
-    return typeof(key) == "EnumItem" and key.Name or "None"
-end
-
---[[ Section Element Factory Functions ]]
--- Extracted for better code organization and reusability
-
-local function CreateKeybindUI(window, parent, defaultKey, callback)
-    if not window or not parent then return nil end
-    
-    local kbBtn = Create("TextButton", {
-        Size = UDim2.new(0, 40, 0, 18),
-        Position = UDim2.new(1, -44, 0.5, -9),
-        BackgroundColor3 = window.CurrentThemeColors.SurfaceAlt,
-        Text = GetKeyName(defaultKey),
-        TextColor3 = window.CurrentThemeColors.TextSecondary,
-        TextSize = 10 * window.FontSize,
-        Font = FONT,
-        BorderSizePixel = 0,
-        Parent = parent,
-    }, { Corner(3), Stroke(window.CurrentThemeColors.Border, 1) })
-    
-    window:RegisterThemeElement(kbBtn, "BackgroundColor3", "SurfaceAlt")
-    window:RegisterThemeElement(kbBtn, "TextColor3", "TextSecondary")
-    window:RegisterThemeElement(kbBtn:FindFirstChildWhichIsA("UIStroke"), "Color", "Border")
-
-    local kbObj = { Key = defaultKey, Callback = callback or function() end }
-    table.insert(window.Keybinds, kbObj)
-
-    kbBtn.MouseButton1Click:Connect(function()
-        if window.Binding then return end
-        kbBtn.Text = "..."
-        window.Binding = true
-        window._BindTarget = {
-            UpdateKey = function(k)
-                kbObj.Key = k
-                kbBtn.Text = GetKeyName(k)
-            end
+    ["Anti Curve"] = {
+        ["Enabled"] = false,
+        ["Angle"]   = 0.9,
+        ["Weapon Configuration"] = {
+            ["Enabled"]    = true,
+            ["Shotguns"]   = { ["Angle"] = 1.5 },
+            ["Pistols"]    = { ["Angle"] = 1.0 },
+            ["Automatics"] = { ["Angle"] = 1.2 },
+            ["Rifles"]     = { ["Angle"] = 0.8 },
+            ["Others"]     = { ["Angle"] = 0.9 }
         }
-    end)
-    
-    kbBtn.MouseButton2Click:Connect(function()
-        kbObj.Key = nil
-        kbBtn.Text = "None"
-    end)
+    },
+    ["Camera Aimbot"] = {
+        ["Enabled"] = false,
+        ["Mode"]    = "Always",        -- "Always" | "Toggle" | "Hold"
+        ["HitPart"] = "Closest Point",          -- "Head" | "UpperTorso" | "Closest Point" | "Closest Part"
+        ["Closest Point"] = { ["Mode"] = "Advanced", ["Scale"] = 0.09, ["Density"] = 4 },
+        ["Smoothing"] = { ["X"] = 0.699, ["Y"] = 0.699 },
+        ["Range Smoothing"] = {
+            ["Enabled"] = true,
+            ["Close"]   = { ["X"] = 0.635, ["Y"] = 0.669 }, -- <= 30 studs
+            ["Medium"]  = { ["X"] = 0.645, ["Y"] = 0.689 }, -- <= 80 studs
+            ["Far"]     = { ["X"] = 0.699, ["Y"] = 0.699 }  -- > 80 studs
+        },
+        ["Humanize"]  = { ["Bezier"] = false, ["Enabled"] = false, ["Scale"] = 0.25 },
+        ["Prediction"] = { ["X"] = 0, ["Y"] = 0, ["Z"] = 0 },
+        ["Camera Aimbot Conditions"] = {
+            ["First Person"] = true,   -- active in first person
+            ["Third Person"] = true,   -- active in third person / shift lock
+        },
+        ["FOV"] = {
+            ["Show FOV"] = false,
+            ["Radius"]   = "80",
+            ["X Left"]  = 1, ["X Right"]  = 1,
+            ["Y Upper"] = 1, ["Y Lower"]  = 1,
+            ["Z Left"]  = 1, ["Z Right"]  = 1
+        }
+    },
+    ["Trigger Bot"] = {
+        ["Enabled"] = true,
+        ["Settings"] = {
+            ["Mode"] = "Toggle",         -- "Always" | "Toggle" | "Hold"
+            ["Type"] = "FOV"           -- "FOV" | "Hitbox"
+        },
+        ["Delay Settings"] = {
+            ["Delay Toggle"] = true,
+            ["Delay"] = 0.06,
+            ["Weapon Configuration"] = {
+                ["Enabled"]    = true,
+                ["Shotguns"]   = { ["Delay"] = 0.09 },
+                ["Pistols"]    = { ["Delay"] = 0.05 },
+                ["Automatics"] = { ["Delay"] = 0.03 },
+                ["Rifles"]     = { ["Delay"] = 0.05 },
+                ["Others"]     = { ["Delay"] = 0.06 }
+            }
+        },
+        ["Prediction"] = { ["X"] = 0, ["Y"] = 0, ["Z"] = 0 },
+        ["Distance Check"] = { ["Enabled"] = true, ["Max Distance"] = 350 },
+        ["FOV"] = {
+            ["Show FOV"] = false,
+            ["Size"] = {
+                ["X Left"]  = 5, ["X Right"]  = 5,
+                ["Y Upper"] = 3, ["Y Lower"]  = 3,
+                ["Z Left"]  = 2, ["Z Right"]  = 2
+            },
+            ["Weapon Configuration"] = { ["Enabled"] = false }
+        }
+    },
+    ["Rapid Fire"] = {
+        ["Enabled"] = false,
+        ["Delay"]   = 0,     -- seconds between shots (0 = as fast as possible)
+        ["Weapons"] = {}     -- empty = all weapons, list names to restrict
+    },
+    ["Ping Prediction"] = {
+        ["Enabled"]   = false,
+        ["Y Scale"]   = 0.42, -- vertical prediction scale (lower = less Y lead)
+        ["Smoothing"] = 0.09  -- lerp speed for prediction values
+    },
+    ["Spread Modifications"] = {
+        ["Enabled"] = false,
+        ["Mode"]    = "Fixed", -- "Fixed" (always same) | "Randomized" (between min/max)
+        ["Double-Barrel SG"] = { ["Fixed"] = 0, ["Min"] = 0, ["Max"] = 0 },
+        ["TacticalShotgun"]  = { ["Fixed"] = 0, ["Min"] = 0, ["Max"] = 0 },
+        ["Shotgun"]          = { ["Fixed"] = 0, ["Min"] = 0, ["Max"] = 0 },
+        ["DrumShotgun"]      = { ["Fixed"] = 0, ["Min"] = 0, ["Max"] = 0 },
+    },
+    ["Speed Modifications"] = {
+        ["Enabled"] = false,
+        ["Normal"]     = { ["Multiplier"] = 35 },
+        ["Low Health"] = { ["Health Threshold"] = 35, ["Multiplier"] = 35 }
+    },
+    ["Hitbox Expander"] = {
+        ["Enabled"] = false,
+        ["Size"] = 8,
+    },
+    ["Super Jump"] = {
+        ["Enabled"] = false,
+        ["Jump Power"] = 300,
+    },
+    ["ESP"] = {
+        ["Enabled"]           = true,
+        ["Show Display Name"] = true,
+        ["Show Username"]     = false,
+        ["Name Above"]        = false,  -- true = above head, false = below feet
+        ["Font Size"]         = 13,
+        ["Color"]             = Color3.fromRGB(135, 206, 235),
+        ["Target Color"]      = Color3.fromRGB(255, 255, 255),
+        ["Username Color"]    = Color3.fromRGB(180, 180, 180),
+        ["Target Line"] = {
+            ["Enabled"]      = false,
+            ["Thickness"]    = 1.0,
+            ["Color"]        = Color3.fromRGB(255, 255, 255),
+            ["Transparency"] = 1.0,
+            ["Origin"]       = "Mouse", -- "Bottom" | "Center" | "Mouse"
+        },
+    },
+    ["Skins"] = {
+        ["Enabled"] = false,
+        ["Weapons"] = {
+            ["[Double-Barrel SG]"] = "Golden Age",
+            ["[Revolver]"] = "Golden Age",
+            ["[TacticalShotgun]"] = "Patriot",
+            ["[Knife]"] = "GPO-Knife Prestige",
+        },
+    },
+}
 
-    return kbBtn
+
+getgenv().Lucent = shared.Lucent
+getgenv().lucent = shared.Lucent
+
+local Players = game:GetService("Players")
+local RunService = game:GetService("RunService")
+local UserInputService = game:GetService("UserInputService")
+local Workspace = game:GetService("Workspace")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local localPlayer = Players.LocalPlayer
+local camera = Workspace.CurrentCamera
+local mouse = localPlayer:GetMouse()
+
+-- Skin Changer Data
+local knifeData = {}
+local toolRegistry = {}
+
+local knifeSkins = {
+    ["Golden Age Tanto"] = {soundid = "rbxassetid://5917819099", animationid = "rbxassetid://13473404819", positionoffset = Vector3.new(0, -0.20, -1.2), rotationoffset = Vector3.new(90, 263.7, 180)},
+    ["GPO-Knife"] = {soundid = "rbxassetid://4604390759", animationid = "rbxassetid://14014278925", positionoffset = Vector3.new(0.00, -0.32, -1.07), rotationoffset = Vector3.new(90, -97.4, 90)},
+    ["GPO-Knife Prestige"] = {soundid = "rbxassetid://4604390759", animationid = "rbxassetid://14014278925", positionoffset = Vector3.new(0.00, -0.32, -1.07), rotationoffset = Vector3.new(90, -97.4, 90)},
+    ["Heaven"] = {soundid = "rbxassetid://14489860007", animationid = "rbxassetid://14500266726", positionoffset = Vector3.new(-0.02, -0.82, 0.20), rotationoffset = Vector3.new(64.42, 3.79, 0.00)},
+    ["Love Kukri"] = {soundid = "", animationid = "", positionoffset = Vector3.new(-0.14, 0.14, -1.62), rotationoffset = Vector3.new(-90.00, 180.00, -4.97), particle = true, textureid = "rbxassetid://12124159284"},
+    ["Purple Dagger"] = {soundid = "rbxassetid://17822743153", animationid = "rbxassetid://17824999722", positionoffset = Vector3.new(-0.13, -0.24, -1.80), rotationoffset = Vector3.new(89.05, 96.63, 180.00)},
+    ["Blue Dagger"] = {soundid = "rbxassetid://17822737046", animationid = "rbxassetid://17824995184", positionoffset = Vector3.new(-0.13, -0.24, -1.80), rotationoffset = Vector3.new(89.05, 96.63, 180.00)},
+    ["Green Dagger"] = {soundid = "rbxassetid://17822741762", animationid = "rbxassetid://17825004320", positionoffset = Vector3.new(-0.13, -0.24, -1.07), rotationoffset = Vector3.new(89.05, 96.63, 180.00)},
+    ["Red Dagger"] = {soundid = "rbxassetid://17822952417", animationid = "rbxassetid://17825008844", positionoffset = Vector3.new(-0.13, -0.24, -1.07), rotationoffset = Vector3.new(89.05, 96.63, 180.00)},
+    ["Portal"] = {soundid = "rbxassetid://16058846352", animationid = "rbxassetid://16058633881", positionoffset = Vector3.new(-0.13, -0.35, -0.57), rotationoffset = Vector3.new(89.05, 96.63, 180.00)},
+    ["Emerald Butterfly"] = {soundid = "rbxassetid://14931902491", animationid = "rbxassetid://14918231706", positionoffset = Vector3.new(-0.02, -0.30, -0.65), rotationoffset = Vector3.new(180.00, 90.95, 180.00)},
+    ["Boy"] = {soundid = "rbxassetid://18765078331", animationid = "rbxassetid://18789158908", positionoffset = Vector3.new(-0.02, -0.09, -0.73), rotationoffset = Vector3.new(89.05, -88.11, 180.00)},
+    ["Girl"] = {soundid = "rbxassetid://18765078331", animationid = "rbxassetid://18789162944", positionoffset = Vector3.new(-0.02, -0.16, -0.73), rotationoffset = Vector3.new(89.05, -88.11, 180.00)},
+    ["Dragon"] = {soundid = "rbxassetid://14217789230", animationid = "rbxassetid://14217804400", positionoffset = Vector3.new(-0.02, -0.32, -0.98), rotationoffset = Vector3.new(89.05, 90.95, 180.00)},
+    ["Void"] = {soundid = "rbxassetid://14756591763", animationid = "rbxassetid://14774699952", positionoffset = Vector3.new(-0.02, -0.22, -0.85), rotationoffset = Vector3.new(180.00, 90.95, 180.00)},
+    ["Wild West"] = {soundid = "rbxassetid://16058689026", animationid = "rbxassetid://16058148839", positionoffset = Vector3.new(-0.02, -0.24, -1.15), rotationoffset = Vector3.new(-91.89, 90.95, 180.00)},
+    ["Iced Out"] = {soundid = "rbxassetid://14924261405", animationid = "rbxassetid://18465353361", positionoffset = Vector3.new(0.02, -0.08, 0.99), rotationoffset = Vector3.new(180.00, -90.95, -180.00)},
+    ["Reptile"] = {soundid = "rbxassetid://18765103349", animationid = "rbxassetid://18788955930", positionoffset = Vector3.new(-0.03, -0.06, -0.92), rotationoffset = Vector3.new(168.63, 90.00, -180.00)},
+    ["Emerald"] = {soundid = "", animationid = "", positionoffset = Vector3.new(-0.03, -0.06, -0.92), rotationoffset = Vector3.new(168.63, 90.00, 108.00)},
+    ["Ribbon"] = {soundid = "rbxassetid://130974579277249", animationid = "rbxassetid://124102609796063", positionoffset = Vector3.new(0.02, -0.25, -0.05), rotationoffset = Vector3.new(90.00, 0.00, 180.00)},
+}
+
+local function clearMesh(tool, exclude)
+    local children = tool:GetChildren()
+    for i = 1, #children do
+        local v = children[i]
+        if v:IsA("MeshPart") and v ~= exclude then
+            v:Destroy()
+        end
+    end
 end
 
-local function CreateToggle(window, section, cfg)
-    if not window or not section then return { Set = function() end, Get = function() return false end } end
-    
-    local name = cfg.Name or "Toggle"
-    local def = cfg.Default or false
-    local cb = cfg.Callback or function() end
-    local key = cfg.Keybind
+local function applyGun(tool, name)
+    local orig = tool:FindFirstChildOfClass("MeshPart")
+    if not orig then return end
 
-    local val = def
-    local Toggle = Create("TextButton", {
-        Size = UDim2.new(1, 0, 0, 30),
-        BackgroundColor3 = window.CurrentThemeColors.Surface,
-        BackgroundTransparency = 1,
-        Text = "",
-        Parent = section.Frame,
-    })
+    local skinmodules = ReplicatedStorage:FindFirstChild("SkinModules")
+    if not skinmodules then return end
 
-    local Lbl = Create("TextLabel", {
-        Size = UDim2.new(1, -60, 1, 0),
-        Position = UDim2.new(0, 8, 0, 0),
-        BackgroundTransparency = 1,
-        Text = name,
-        TextColor3 = val and window.CurrentThemeColors.TextPrimary or window.CurrentThemeColors.TextSecondary,
-        TextSize = 11 * window.FontSize,
-        Font = FONT,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Parent = Toggle,
-    })
+    local ok, skinmodulesreq = pcall(function()
+        return require(skinmodules)
+    end)
+    if not ok or not skinmodulesreq then return end
 
-    local Switch = Create("Frame", {
-        Size = UDim2.new(0, 34, 0, 18),
-        Position = UDim2.new(1, -42, 0.5, -9),
-        BackgroundColor3 = window.CurrentThemeColors.SurfaceAlt,
-        Parent = Toggle,
-    }, { Corner(9), Stroke(window.CurrentThemeColors.Border, 1) })
+    local info = skinmodulesreq[tool.Name] and skinmodulesreq[tool.Name][name]
+    if not info then return end
 
-    local Dot = Create("Frame", {
-        Size = UDim2.new(0, 14, 0, 14),
-        Position = UDim2.new(0, val and 18 or 2, 0.5, -7),
-        BackgroundColor3 = val and window.CurrentThemeColors.Accent or window.CurrentThemeColors.TextSecondary,
-        Parent = Switch,
-    }, { Corner(7) })
+    clearMesh(tool, orig)
 
-    window:RegisterThemeElement(Lbl, "TextColor3", val and "TextPrimary" or "TextSecondary")
-    window:RegisterThemeElement(Switch, "BackgroundColor3", "SurfaceAlt")
-    window:RegisterThemeElement(Switch:FindFirstChildWhichIsA("UIStroke"), "Color", "Border")
-    window:RegisterThemeElement(Dot, "BackgroundColor3", val and "Accent" or "TextSecondary")
+    local skinpart = info.TextureID
+    if typeof(skinpart) == "Instance" then
+        local clone = skinpart:Clone()
+        clone.Parent = tool
+        clone.CFrame = orig.CFrame
+        clone.Name = "CurrentSkin"
 
-    if key then
-        local kbBtn = CreateKeybindUI(window, Toggle, key, function() Toggle.MouseButton1Click:Fire() end)
-        if kbBtn then kbBtn.Position = UDim2.new(1, -90, 0.5, -9) end
+        local w = Instance.new("Weld")
+        w.Part0 = clone
+        w.Part1 = orig
+        w.C0 = info.CFrame:Inverse()
+        w.Parent = clone
+
+        orig.Transparency = 1
+    else
+        orig.TextureID = skinpart
+        orig.Transparency = 0
     end
 
-    local function set(v)
-        val = v
-        Tween(Dot, {Position = UDim2.new(0, v and 18 or 2, 0.5, -7), BackgroundColor3 = v and window.CurrentThemeColors.Accent or window.CurrentThemeColors.TextSecondary}, 0.2):Play()
-        Tween(Lbl, {TextColor3 = v and window.CurrentThemeColors.TextPrimary or window.CurrentThemeColors.TextSecondary}, 0.2):Play()
-        cb(v)
-    end
+    local handle = tool:FindFirstChild("Handle")
+    if not handle then return end
 
-    Toggle.MouseButton1Click:Connect(function() set(not val) end)
-
-    window.ConfigData[name] = def
-    return { Set = set, Get = function() return val end }
-end
-
-local function CreateSlider(window, section, cfg)
-    if not window or not section then return { Set = function() end, Get = function() return 0 end } end
-    
-    local name = cfg.Name or "Slider"
-    local min = cfg.Min or 0
-    local max = cfg.Max or 100
-    local def = cfg.Default or min
-    local cb = cfg.Callback or function() end
-
-    local val = def
-    local Slider = Create("Frame", {
-        Size = UDim2.new(1, 0, 0, 42),
-        BackgroundTransparency = 1,
-        Parent = section.Frame,
-    })
-
-    local Lbl = Create("TextLabel", {
-        Size = UDim2.new(1, -60, 0, 20),
-        Position = UDim2.new(0, 8, 0, 0),
-        BackgroundTransparency = 1,
-        Text = name,
-        TextColor3 = window.CurrentThemeColors.TextSecondary,
-        TextSize = 11 * window.FontSize,
-        Font = FONT,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Parent = Slider,
-    })
-
-    local ValLbl = Create("TextLabel", {
-        Size = UDim2.new(0, 50, 0, 20),
-        Position = UDim2.new(1, -58, 0, 0),
-        BackgroundTransparency = 1,
-        Text = tostring(val),
-        TextColor3 = window.CurrentThemeColors.TextPrimary,
-        TextSize = 11 * window.FontSize,
-        Font = FONT_BOLD,
-        TextXAlignment = Enum.TextXAlignment.Right,
-        Parent = Slider,
-    })
-
-    local Track = Create("TextButton", {
-        Size = UDim2.new(1, -16, 0, 6),
-        Position = UDim2.new(0, 8, 0, 26),
-        BackgroundColor3 = window.CurrentThemeColors.SurfaceAlt,
-        Text = "",
-        AutoButtonColor = false,
-        Parent = Slider,
-    }, { Corner(3) })
-
-    local pct = math.clamp((val - min) / (max - min), 0, 1)
-    local Fill = Create("Frame", {
-        Size = UDim2.new(pct, 0, 1, 0),
-        BackgroundColor3 = window.CurrentThemeColors.Accent,
-        Parent = Track,
-    }, { Corner(3) })
-
-    window:RegisterThemeElement(Lbl, "TextColor3", "TextSecondary")
-    window:RegisterThemeElement(ValLbl, "TextColor3", "TextPrimary")
-    window:RegisterThemeElement(Track, "BackgroundColor3", "SurfaceAlt")
-    window:RegisterThemeElement(Fill, "BackgroundColor3", "Accent")
-
-    local function set(v)
-        v = math.clamp(v, min, max)
-        val = math.floor(v * 10) / 10
-        local p = (val - min) / (max - min)
-        Tween(Fill, {Size = UDim2.new(p, 0, 1, 0)}, 0.1):Play()
-        ValLbl.Text = tostring(val)
-        cb(val)
-    end
-
-    local dragging = false
-    Track.InputBegan:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then
-            dragging = true
-            local rel = (input.Position.X - Track.AbsolutePosition.X) / Track.AbsoluteSize.X
-            set(min + rel * (max - min))
-        end
-    end)
-    
-    UserInputService.InputChanged:Connect(function(input)
-        if dragging and input.UserInputType == Enum.UserInputType.MouseMovement then
-            local rel = (input.Position.X - Track.AbsolutePosition.X) / Track.AbsoluteSize.X
-            set(min + rel * (max - min))
-        end
-    end)
-    
-    UserInputService.InputEnded:Connect(function(input)
-        if input.UserInputType == Enum.UserInputType.MouseButton1 then 
-            dragging = false 
-        end
-    end)
-
-    window.ConfigData[name] = def
-    return { Set = set, Get = function() return val end }
-end
-
-local function CreateButton(window, section, cfg)
-    if not window or not section then return end
-    
-    local name = cfg.Name or "Button"
-    local cb = cfg.Callback or function() end
-    local key = cfg.Keybind
-
-    local Btn = Create("TextButton", {
-        Size = UDim2.new(1, 0, 0, 30),
-        BackgroundColor3 = window.CurrentThemeColors.SurfaceAlt,
-        Text = name,
-        TextColor3 = window.CurrentThemeColors.TextPrimary,
-        TextSize = 11 * window.FontSize,
-        Font = FONT_BOLD,
-        Parent = section.Frame,
-    }, { Corner(4), Stroke(window.CurrentThemeColors.Border, 1) })
-
-    window:RegisterThemeElement(Btn, "BackgroundColor3", "SurfaceAlt")
-    window:RegisterThemeElement(Btn, "TextColor3", "TextPrimary")
-    window:RegisterThemeElement(Btn:FindFirstChildWhichIsA("UIStroke"), "Color", "Border")
-
-    Btn.MouseEnter:Connect(function() 
-        Tween(Btn, {BackgroundColor3 = window.CurrentThemeColors.Border}, 0.2):Play() 
-    end)
-    Btn.MouseLeave:Connect(function() 
-        Tween(Btn, {BackgroundColor3 = window.CurrentThemeColors.SurfaceAlt}, 0.2):Play() 
-    end)
-
-    Btn.MouseButton1Click:Connect(function()
-        local rip = Create("Frame", {
-            Size = UDim2.new(0, 0, 0, 0),
-            Position = UDim2.new(0.5, 0, 0.5, 0),
-            AnchorPoint = Vector2.new(0.5, 0.5),
-            BackgroundColor3 = window.CurrentThemeColors.Accent,
-            BackgroundTransparency = 0.5,
-            Parent = Btn
-        }, { Corner(100) })
-        Tween(rip, {Size = UDim2.new(1, 40, 1, 40), BackgroundTransparency = 1}, 0.4):Play()
-        task.delay(0.4, function() if rip and rip.Parent then rip:Destroy() end end)
-        cb()
-    end)
-
-    if key then CreateKeybindUI(window, Btn, key, cb) end
-end
-
-local function CreateDropdown(window, section, cfg)
-    if not window or not section then 
-        return { Set = function() end, Get = function() return nil end, SetOptions = function() end } 
-    end
-    
-    local name = cfg.Name or "Dropdown"
-    local opts = cfg.Options or {}
-    local def = cfg.Default or opts[1]
-    local cb = cfg.Callback or function() end
-    local key = cfg.Keybind
-
-    local selected = def
-    local Drop = Create("Frame", {
-        Size = UDim2.new(1, 0, 0, 30),
-        BackgroundTransparency = 1,
-        Parent = section.Frame,
-        ZIndex = 5,
-    })
-    
-    Create("TextLabel", {
-        Size = UDim2.new(0.4, 0, 1, 0),
-        Position = UDim2.new(0, 8, 0, 0),
-        BackgroundTransparency = 1,
-        Text = name,
-        TextColor3 = window.CurrentThemeColors.TextSecondary,
-        TextSize = 11 * window.FontSize,
-        Font = FONT,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Parent = Drop,
-    })
-
-    local DropBtn = Create("TextButton", {
-        Size = UDim2.new(0.6, -16, 0, 22),
-        Position = UDim2.new(0.4, 8, 0.5, -11),
-        BackgroundColor3 = window.CurrentThemeColors.SurfaceAlt,
-        Text = tostring(selected) .. " \u{25BC}",
-        TextColor3 = window.CurrentThemeColors.TextPrimary,
-        TextSize = 10 * window.FontSize,
-        Font = FONT,
-        ZIndex = 6,
-        Parent = Drop,
-    }, { Corner(3), Stroke(window.CurrentThemeColors.Border, 1) })
-
-    window:RegisterThemeElement(DropBtn, "BackgroundColor3", "SurfaceAlt")
-    window:RegisterThemeElement(DropBtn, "TextColor3", "TextPrimary")
-    window:RegisterThemeElement(DropBtn:FindFirstChildWhichIsA("UIStroke"), "Color", "Border")
-
-    local List = Create("Frame", {
-        Size = UDim2.new(1, 0, 0, 0),
-        Position = UDim2.new(0, 0, 1, 2),
-        BackgroundColor3 = window.CurrentThemeColors.SurfaceAlt,
-        Visible = false,
-        ZIndex = 10,
-        Parent = DropBtn,
-        ClipsDescendants = true,
-    }, { Corner(3), Stroke(window.CurrentThemeColors.Border, 1) })
-    
-    local ll = Create("UIListLayout", {SortOrder = Enum.SortOrder.LayoutOrder})
-    ll.Parent = List
-    
-    local listSizeTween = nil
-
-    local open = false
-    
-    local function updateListSize()
-        local count = 0
-        for _, child in ipairs(List:GetChildren()) do
-            if child:IsA("TextButton") then count += 1 end
-        end
-        return count * 20
-    end
-
-    DropBtn.MouseButton1Click:Connect(function()
-        open = not open
-        List.Visible = true
-        if open then
-            local targetSize = updateListSize()
-            if targetSize > 0 then
-                if listSizeTween then listSizeTween:Cancel() end
-                listSizeTween = Tween(List, {Size = UDim2.new(1, 0, 0, targetSize)}, 0.2)
-                listSizeTween:Play()
+    local shoot = handle:FindFirstChild("ShootSound")
+    if shoot then
+        local skinassets = ReplicatedStorage:FindFirstChild("SkinAssets")
+        if skinassets then
+            local gunsounds = skinassets:FindFirstChild("GunShootSounds")
+            if gunsounds then
+                local sounds = gunsounds:FindFirstChild(tool.Name)
+                local obj = sounds and sounds:FindFirstChild(name)
+                if obj then
+                    shoot.SoundId = obj.Value
+                end
             end
-        else
-            if listSizeTween then listSizeTween:Cancel() end
-            listSizeTween = Tween(List, {Size = UDim2.new(1, 0, 0, 0)}, 0.15)
-            listSizeTween:Play()
-            task.delay(0.15, function() if not open then List.Visible = false end end)
-        end
-    end)
-
-    local function setOptions(newOpts)
-        opts = newOpts or {}
-        for _, c in ipairs(List:GetChildren()) do 
-            if c:IsA("TextButton") then c:Destroy() end 
-        end
-        selected = opts[1]
-        
-        for i, o in ipairs(opts) do
-            local ob = Create("TextButton", {
-                Size = UDim2.new(1, 0, 0, 20),
-                BackgroundTransparency = 1,
-                Text = tostring(o),
-                TextColor3 = window.CurrentThemeColors.TextSecondary,
-                TextSize = 10 * window.FontSize,
-                Font = FONT,
-                ZIndex = 11,
-                LayoutOrder = i,
-                Parent = List,
-            })
-            ob.MouseButton1Click:Connect(function()
-                selected = o
-                DropBtn.Text = tostring(o) .. " \u{25BC}"
-                open = false
-                if listSizeTween then listSizeTween:Cancel() end
-                listSizeTween = Tween(List, {Size = UDim2.new(1, 0, 0, 0)}, 0.15)
-                listSizeTween:Play()
-                task.delay(0.15, function() if not open then List.Visible = false end end)
-                cb(o)
-            end)
-            ob.MouseEnter:Connect(function() 
-                Tween(ob, {TextColor3 = window.CurrentThemeColors.Accent}, 0.2):Play() 
-            end)
-            ob.MouseLeave:Connect(function() 
-                Tween(ob, {TextColor3 = window.CurrentThemeColors.TextSecondary}, 0.2):Play() 
-            end)
         end
     end
 
-    setOptions(opts)
-    if key then CreateKeybindUI(window, DropBtn, key, function() end) end
-
-    return { 
-        Set = function(v) selected = v; DropBtn.Text = tostring(v) .. " \u{25BC}"; cb(v) end, 
-        Get = function() return selected end, 
-        SetOptions = setOptions 
-    }
-end
-
-local function CreateMultiDropdown(window, section, cfg)
-    if not window or not section then 
-        return { Set = function() end, Get = function() return {} end, SetOptions = function() end } 
-    end
-    
-    local name = cfg.Name or "MultiDropdown"
-    local opts = cfg.Options or {}
-    local defList = cfg.Default or {}
-    local cb = cfg.Callback or function() end
-
-    local selected = {}
-    for _, v in ipairs(defList) do selected[v] = true end
-
-    local Drop = Create("Frame", {
-        Size = UDim2.new(1, 0, 0, 30),
-        BackgroundTransparency = 1,
-        Parent = section.Frame,
-        ZIndex = 5,
-    })
-    
-    local Lbl = Create("TextLabel", {
-        Size = UDim2.new(0.4, 0, 1, 0),
-        Position = UDim2.new(0, 8, 0, 0),
-        BackgroundTransparency = 1,
-        Text = name,
-        TextColor3 = window.CurrentThemeColors.TextSecondary,
-        TextSize = 11 * window.FontSize,
-        Font = FONT,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Parent = Drop,
-    })
-
-    local DropBtn = Create("TextButton", {
-        Size = UDim2.new(0.6, -16, 0, 22),
-        Position = UDim2.new(0.4, 8, 0.5, -11),
-        BackgroundColor3 = window.CurrentThemeColors.SurfaceAlt,
-        Text = "Select...",
-        TextColor3 = window.CurrentThemeColors.TextPrimary,
-        TextSize = 10 * window.FontSize,
-        Font = FONT,
-        ZIndex = 6,
-        Parent = Drop,
-    }, { Corner(3), Stroke(window.CurrentThemeColors.Border, 1) })
-
-    window:RegisterThemeElement(Lbl, "TextColor3", "TextSecondary")
-    window:RegisterThemeElement(DropBtn, "BackgroundColor3", "SurfaceAlt")
-    window:RegisterThemeElement(DropBtn, "TextColor3", "TextPrimary")
-    window:RegisterThemeElement(DropBtn:FindFirstChildWhichIsA("UIStroke"), "Color", "Border")
-
-    local List = Create("Frame", {
-        Size = UDim2.new(1, 0, 0, 0),
-        Position = UDim2.new(0, 0, 1, 2),
-        BackgroundColor3 = window.CurrentThemeColors.SurfaceAlt,
-        Visible = false,
-        ZIndex = 10,
-        Parent = DropBtn,
-        ClipsDescendants = true,
-    }, { Corner(3), Stroke(window.CurrentThemeColors.Border, 1) })
-    
-    local ll = Create("UIListLayout", {SortOrder = Enum.SortOrder.LayoutOrder})
-    ll.Parent = List
-    
-    local listSizeTween = nil
-    local open = false
-    
-    local function updateListSize()
-        local count = 0
-        for _, child in ipairs(List:GetChildren()) do
-            if child:IsA("TextButton") then count += 1 end
-        end
-        return count * 20
-    end
-
-    DropBtn.MouseButton1Click:Connect(function()
-        open = not open
-        List.Visible = true
-        if open then
-            local targetSize = updateListSize()
-            if targetSize > 0 then
-                if listSizeTween then listSizeTween:Cancel() end
-                listSizeTween = Tween(List, {Size = UDim2.new(1, 0, 0, targetSize)}, 0.2)
-                listSizeTween:Play()
-            end
-        else
-            if listSizeTween then listSizeTween:Cancel() end
-            listSizeTween = Tween(List, {Size = UDim2.new(1, 0, 0, 0)}, 0.15)
-            listSizeTween:Play()
-            task.delay(0.15, function() if not open then List.Visible = false end end)
-        end
-    end)
-
-    local function renderText()
-        local t = {}
-        for k, v in pairs(selected) do 
-            if v then table.insert(t, tostring(k)) end 
-        end
-        DropBtn.Text = #t > 0 and table.concat(t, ", ") or "None"
-    end
-
-    local function setOptions(newOpts)
-        opts = newOpts or {}
-        for _, c in ipairs(List:GetChildren()) do 
-            if c:IsA("TextButton") then c:Destroy() end 
-        end
-        for i, o in ipairs(opts) do
-            local ob = Create("TextButton", {
-                Size = UDim2.new(1, 0, 0, 20),
-                BackgroundTransparency = 1,
-                Text = tostring(o),
-                TextColor3 = selected[o] and window.CurrentThemeColors.Accent or window.CurrentThemeColors.TextSecondary,
-                TextSize = 10 * window.FontSize,
-                Font = FONT,
-                ZIndex = 11,
-                LayoutOrder = i,
-                Parent = List,
-            })
-            ob.MouseButton1Click:Connect(function()
-                selected[o] = not selected[o]
-                ob.TextColor3 = selected[o] and window.CurrentThemeColors.Accent or window.CurrentThemeColors.TextSecondary
-                renderText()
-                cb(selected)
-            end)
-        end
-        renderText()
-    end
-
-    setOptions(opts)
-    window.ConfigData[name] = selected
-    return { 
-        Set = function(v) selected = v; renderText(); cb(selected) end, 
-        Get = function() return selected end, 
-        SetOptions = setOptions 
-    }
-end
-
-local function CreateKeybind(window, section, cfg)
-    if not window or not section then return end
-    
-    local name = cfg.Name or "Keybind"
-    local def = cfg.Default
-    local cb = cfg.Callback or function() end
-
-    local KbFrame = Create("Frame", {
-        Size = UDim2.new(1, 0, 0, 30),
-        BackgroundTransparency = 1,
-        Parent = section.Frame,
-    })
-
-    Create("TextLabel", {
-        Size = UDim2.new(1, -60, 1, 0),
-        Position = UDim2.new(0, 8, 0, 0),
-        BackgroundTransparency = 1,
-        Text = name,
-        TextColor3 = window.CurrentThemeColors.TextSecondary,
-        TextSize = 11 * window.FontSize,
-        Font = FONT,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Parent = KbFrame,
-    })
-
-    CreateKeybindUI(window, KbFrame, def, cb)
-end
-
-local function CreateColorPicker(window, section, cfg)
-    if not window or not section then return { Set = function() end, Get = function() return Color3.new(1,1,1) end } end
-    
-    local name = cfg.Name or "ColorPicker"
-    local def = cfg.Default or Color3.new(1, 1, 1)
-    local cb = cfg.Callback or function() end
-
-    local val = def
-    local CPFrame = Create("Frame", {
-        Size = UDim2.new(1, 0, 0, 30),
-        BackgroundTransparency = 1,
-        Parent = section.Frame,
-    })
-    
-    Create("TextLabel", {
-        Size = UDim2.new(1, -70, 1, 0),
-        Position = UDim2.new(0, 8, 0, 0),
-        BackgroundTransparency = 1,
-        Text = name,
-        TextColor3 = window.CurrentThemeColors.TextSecondary,
-        TextSize = 11 * window.FontSize,
-        Font = FONT,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Parent = CPFrame,
-    })
-
-    local Disp = Create("Frame", {
-        Size = UDim2.new(0, 18, 0, 18),
-        Position = UDim2.new(1, -70, 0.5, -9),
-        BackgroundColor3 = val,
-        Parent = CPFrame,
-    }, { Corner(3), Stroke(window.CurrentThemeColors.Border, 1) })
-
-    local HexInput = Create("TextBox", {
-        Size = UDim2.new(0, 48, 0, 18),
-        Position = UDim2.new(1, -48, 0.5, -9),
-        BackgroundColor3 = window.CurrentThemeColors.SurfaceAlt,
-        Text = ColorToHex(val),
-        TextColor3 = window.CurrentThemeColors.TextPrimary,
-        TextSize = 10 * window.FontSize,
-        Font = FONT,
-        ClearTextOnFocus = false,
-        Parent = CPFrame,
-    }, { Corner(3), Stroke(window.CurrentThemeColors.Border, 1) })
-
-    window:RegisterThemeElement(Disp:FindFirstChildWhichIsA("UIStroke"), "Color", "Border")
-    window:RegisterThemeElement(HexInput, "BackgroundColor3", "SurfaceAlt")
-    window:RegisterThemeElement(HexInput, "TextColor3", "TextPrimary")
-    window:RegisterThemeElement(HexInput:FindFirstChildWhichIsA("UIStroke"), "Color", "Border")
-
-    local function set(v)
-        if typeof(v) ~= "Color3" then return end
-        val = v
-        Disp.BackgroundColor3 = val
-        HexInput.Text = ColorToHex(val)
-        cb(val)
-    end
-
-    HexInput.FocusLost:Connect(function()
-        local success, color = pcall(HexToColor, HexInput.Text)
-        if success then set(color) end
-    end)
-
-    window.ConfigData[name] = ColorToHex(def)
-    return { Set = set, Get = function() return val end }
-end
-
-local function CreateTextBox(window, section, cfg)
-    if not window or not section then return { Set = function() end, Get = function() return "" end } end
-    
-    local name = cfg.Name or "TextBox"
-    local def = cfg.Default or ""
-    local cb = cfg.Callback or function() end
-
-    local TBFrame = Create("Frame", {
-        Size = UDim2.new(1, 0, 0, 46),
-        BackgroundTransparency = 1,
-        Parent = section.Frame,
-    })
-    
-    local Lbl = Create("TextLabel", {
-        Size = UDim2.new(1, -16, 0, 20),
-        Position = UDim2.new(0, 8, 0, 0),
-        BackgroundTransparency = 1,
-        Text = name,
-        TextColor3 = window.CurrentThemeColors.TextSecondary,
-        TextSize = 11 * window.FontSize,
-        Font = FONT,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Parent = TBFrame,
-    })
-    
-    local Input = Create("TextBox", {
-        Size = UDim2.new(1, -16, 0, 22),
-        Position = UDim2.new(0, 8, 0, 22),
-        BackgroundColor3 = window.CurrentThemeColors.SurfaceAlt,
-        Text = def,
-        TextColor3 = window.CurrentThemeColors.TextPrimary,
-        TextSize = 10 * window.FontSize,
-        Font = FONT,
-        ClearTextOnFocus = false,
-        Parent = TBFrame,
-    }, { Corner(3), Stroke(window.CurrentThemeColors.Border, 1) })
-
-    window:RegisterThemeElement(Lbl, "TextColor3", "TextSecondary")
-    window:RegisterThemeElement(Input, "BackgroundColor3", "SurfaceAlt")
-    window:RegisterThemeElement(Input, "TextColor3", "TextPrimary")
-    window:RegisterThemeElement(Input:FindFirstChildWhichIsA("UIStroke"), "Color", "Border")
-
-    local val = def
-    Input.FocusLost:Connect(function() 
-        val = Input.Text 
-        cb(val) 
-    end)
-    
-    window.ConfigData[name] = def
-    return { Set = function(v) val = v; Input.Text = v; cb(v) end, Get = function() return val end }
-end
-
-local function CreateFolder(window, section, cfg)
-    if not window or not section then return {} end
-    
-    local fname = cfg.Name or "Folder"
-    local FolderBtn = Create("TextButton", {
-        Size = UDim2.new(1, 0, 0, 24),
-        BackgroundColor3 = window.CurrentThemeColors.SurfaceAlt,
-        Text = "  [+] " .. fname,
-        TextColor3 = window.CurrentThemeColors.TextPrimary,
-        TextSize = 11 * window.FontSize,
-        Font = FONT_BOLD,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        Parent = section.Frame,
-    }, { Corner(4), Stroke(window.CurrentThemeColors.Border, 1) })
-    
-    local Container = Create("Frame", {
-        Size = UDim2.new(1, -8, 0, 0),
-        Position = UDim2.new(0, 8, 0, 0),
-        AutomaticSize = Enum.AutomaticSize.Y,
-        BackgroundTransparency = 1,
-        Visible = false,
-        Parent = section.Frame,
-    }, { 
-        Create("UIListLayout", {SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 4)}), 
-        Padding(0, 0, 10, 0) 
-    })
-
-    local open = false
-    FolderBtn.MouseButton1Click:Connect(function()
-        open = not open
-        Container.Visible = open
-        FolderBtn.Text = (open and "  [-] " or "  [+] ") .. fname
-    end)
-
-    -- Create a pseudo-section that inherits section methods but uses the folder container
-    local pseudo = { Frame = Container, Window = window }
-    setmetatable(pseudo, {__index = section})
-    return pseudo
-end
-
-------------------------------
--- WINDOW CREATION
-------------------------------
-function NeverLoseUI:CreateWindow(config)
-    config = config or {}
-    local Window = {
-        Title = config.Title or "NeverLoseUI",
-        Tabs = {},
-        ActiveTab = nil,
-        Elements = {}, -- theme elements
-        Keybinds = {},
-        Binding = false,
-        CurrentTheme = config.Theme or "Midnight",
-        CurrentThemeColors = table.clone(THEMES[config.Theme or "Midnight"] or THEMES.Midnight),
-        ToggleKey = config.ToggleKey or Enum.KeyCode.RightShift,
-        ConfigData = {},
-        Opacity = 1,
-        FontSize = 1,
-    }
-    setmetatable(Window, {__index = NeverLoseUI})
-
-    -- ScreenGui
-    Window.Gui = Create("ScreenGui", {
-        Name = "NeverLoseUI",
-        ResetOnSpawn = false,
-        ZIndexBehavior = Enum.ZIndexBehavior.Sibling,
-        DisplayOrder = 100,
-    })
-    pcall(function() Window.Gui.Parent = CoreGui end)
-    if not Window.Gui.Parent then Window.Gui.Parent = game.Players.LocalPlayer:WaitForChild("PlayerGui") end
-
-    -- Core Window Logic
-    Window.Main = Create("Frame", {
-        Name = "Main",
-        Size = UDim2.new(0, 600, 0, 420),
-        Position = UDim2.new(0.5, -300, 0.5, -210),
-        BackgroundColor3 = Window.CurrentThemeColors.Background,
-        BorderSizePixel = 0,
-        Parent = Window.Gui,
-        ClipsDescendants = false,
-    }, { Corner(6) })
-    
-    Window.MainStroke = Stroke(Window.CurrentThemeColors.Border, 1)
-    Window.MainStroke.Parent = Window.Main
-
-    -- Glow/Shadow
-    Window.Glow = Create("ImageLabel", {
-        Name = "Glow",
-        AnchorPoint = Vector2.new(0.5, 0.5),
-        BackgroundTransparency = 1,
-        Position = UDim2.new(0.5, 0, 0.5, 0),
-        Size = UDim2.new(1, 60, 1, 60),
-        ZIndex = 0,
-        Image = "rbxassetid://5028857084",
-        ImageColor3 = Color3.new(0,0,0),
-        ImageTransparency = 0.5,
-        ScaleType = Enum.ScaleType.Slice,
-        SliceCenter = Rect.new(24, 24, 276, 276),
-        Parent = Window.Main
-    })
-
-    -- Title Bar
-    Window.TitleBar = Create("Frame", {
-        Name = "TitleBar",
-        Size = UDim2.new(1, 0, 0, 40),
-        BackgroundColor3 = Window.CurrentThemeColors.TitleBar,
-        BorderSizePixel = 0,
-        ZIndex = 2,
-        Parent = Window.Main,
-    }, { Corner(6) })
-    -- Square bottom
-    Create("Frame", {
-        Size = UDim2.new(1, 0, 0, 6),
-        Position = UDim2.new(0, 0, 1, -6),
-        BackgroundColor3 = Window.CurrentThemeColors.TitleBar,
-        BorderSizePixel = 0,
-        ZIndex = 2,
-        Parent = Window.TitleBar,
-    })
-    
-    -- Gradient Accent Bar
-    Window.AccentBar = Create("Frame", {
-        Name = "AccentBar",
-        Size = UDim2.new(1, 0, 0, 2),
-        Position = UDim2.new(0, 0, 0, 0),
-        BackgroundColor3 = Color3.new(1,1,1),
-        BorderSizePixel = 0,
-        ZIndex = 3,
-        Parent = Window.TitleBar,
-    }, {
-        Corner(2),
-        Create("UIGradient", {
-            Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, Window.CurrentThemeColors.Accent),
-                ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
-                ColorSequenceKeypoint.new(1, Window.CurrentThemeColors.Accent)
-            })
-        })
-    })
-
-    Window.TitleText = Create("TextLabel", {
-        Size = UDim2.new(0, 200, 1, 0),
-        Position = UDim2.new(0, 16, 0, 0),
-        BackgroundTransparency = 1,
-        Text = Window.Title:upper(),
-        TextColor3 = Window.CurrentThemeColors.TextPrimary,
-        TextSize = 13,
-        Font = FONT_BOLD,
-        TextXAlignment = Enum.TextXAlignment.Left,
-        ZIndex = 3,
-        Parent = Window.TitleBar,
-    })
-
-    -- Draggable setup
-    MakeDraggable(Window.Main, Window.TitleBar)
-
-    -- Sidebar
-    Window.Sidebar = Create("Frame", {
-        Name = "Sidebar",
-        Size = UDim2.new(0, 140, 1, -40),
-        Position = UDim2.new(0, 0, 0, 40),
-        BackgroundColor3 = Window.CurrentThemeColors.Sidebar,
-        BorderSizePixel = 0,
-        ZIndex = 2,
-        Parent = Window.Main,
-    }, {
-        Corner(6),
-        Create("Frame", {Size=UDim2.new(1,0,0,6), Position=UDim2.new(0,0,0,0), BackgroundColor3=Window.CurrentThemeColors.Sidebar, BorderSizePixel=0, ZIndex=2}),
-        Create("Frame", {Size=UDim2.new(0,6,1,0), Position=UDim2.new(1,-6,0,0), BackgroundColor3=Window.CurrentThemeColors.Sidebar, BorderSizePixel=0, ZIndex=2}),
-    })
-    Window.SidebarLine = Create("Frame", {
-        Size = UDim2.new(0, 1, 1, 0),
-        Position = UDim2.new(1, 0, 0, 0),
-        BackgroundColor3 = Window.CurrentThemeColors.Border,
-        BorderSizePixel = 0,
-        ZIndex = 3,
-        Parent = Window.Sidebar,
-    })
-
-    -- Search & Filter Bar
-    Window.SearchBarBox = Create("TextBox", {
-        Name = "SearchBar",
-        Size = UDim2.new(1, -20, 0, 24),
-        Position = UDim2.new(0, 10, 0, 8),
-        BackgroundColor3 = Window.CurrentThemeColors.SurfaceAlt,
-        Text = "",
-        PlaceholderText = "Search...",
-        PlaceholderColor3 = Window.CurrentThemeColors.TextSecondary,
-        TextColor3 = Window.CurrentThemeColors.TextPrimary,
-        TextSize = 10,
-        Font = FONT,
-        ZIndex = 4,
-        Parent = Window.Sidebar,
-    }, { Corner(3), Stroke(Window.CurrentThemeColors.Border, 1) })
-
-    Window.SearchBarBox.Changed:Connect(function(prop)
-        if prop == "Text" then
-            local q = Window.SearchBarBox.Text:lower()
-            for _, tab in ipairs(Window.Tabs) do
-                for _, sec in ipairs(tab.Sections) do
-                    local anyMatched = false
-                    for _, child in ipairs(sec.Frame:GetChildren()) do
-                        if child:IsA("GuiObject") and not string.find("UIListLayout UIPadding UICorner UIStroke", child.ClassName) and child ~= sec.Header then
-                            local lbl = child:FindFirstChildWhichIsA("TextLabel", true)
-                            if lbl and string.find(lbl.Text:lower(), q) then
-                                child.Visible = true
-                                anyMatched = true
-                            else
-                                child.Visible = false
-                            end
+    local skinassets = ReplicatedStorage:FindFirstChild("SkinAssets")
+    if skinassets then
+        local particlefolder = skinassets:FindFirstChild("GunHandleParticle")
+        if particlefolder then
+            local particlesource = particlefolder:FindFirstChild(name)
+            if particlesource then
+                local pe = particlesource:FindFirstChild("ParticleEmitter")
+                if pe then
+                    for _, existing in ipairs(handle:GetChildren()) do
+                        if existing:IsA("ParticleEmitter") then
+                            existing:Destroy()
                         end
                     end
-                    sec.Frame.Visible = anyMatched or q == ""
+                    pe:Clone().Parent = handle
                 end
             end
         end
-    end)
-
-    Window.TabList = Create("ScrollingFrame", {
-        Name = "TabList",
-        Size = UDim2.new(1, 0, 1, -40),
-        Position = UDim2.new(0, 0, 0, 40),
-        BackgroundTransparency = 1,
-        BorderSizePixel = 0,
-        ScrollBarThickness = 0,
-        CanvasSize = UDim2.new(0,0,0,0),
-        AutomaticCanvasSize = Enum.AutomaticSize.Y,
-        ZIndex = 3,
-        Parent = Window.Sidebar,
-    }, {
-        Create("UIListLayout", {SortOrder = Enum.SortOrder.LayoutOrder}),
-        Padding(0, 10, 0, 0)
-    })
-
-    -- Content Area
-    Window.Content = Create("Frame", {
-        Name = "Content",
-        Size = UDim2.new(1, -140, 1, -40),
-        Position = UDim2.new(0, 140, 0, 40),
-        BackgroundTransparency = 1,
-        ZIndex = 2,
-        Parent = Window.Main,
-    })
-    
-    -- Window Resizer (Grab Handler)
-    Window.Resizer = Create("TextButton", {
-        Name = "Resizer",
-        Size = UDim2.new(0, 16, 0, 16),
-        Position = UDim2.new(1, -16, 1, -16),
-        BackgroundTransparency = 1,
-        Text = "",
-        ZIndex = 15,
-        Parent = Window.Main,
-    })
-    local rDrag, rStartSize, rStartPos = false, nil, nil
-    Window.Resizer.InputBegan:Connect(function(i)
-        if i.UserInputType == Enum.UserInputType.MouseButton1 then
-            rDrag = true; rStartSize = Window.Main.Size; rStartPos = i.Position
-        end
-    end)
-    UserInputService.InputChanged:Connect(function(i)
-        if rDrag and i.UserInputType == Enum.UserInputType.MouseMovement then
-            local del = i.Position - rStartPos
-            Window.Main.Size = UDim2.new(0, math.max(rStartSize.X.Offset + del.X, 400), 0, math.max(rStartSize.Y.Offset + del.Y, 300))
-        end
-    end)
-    UserInputService.InputEnded:Connect(function(i) if i.UserInputType == Enum.UserInputType.MouseButton1 then rDrag = false end end)
-
-    -- Theme Elements Registration
-    function Window:RegisterThemeElement(inst, prop, themeKey)
-        table.insert(self.Elements, {Instance = inst, Property = prop, ThemeKey = themeKey})
     end
 
-    Window:RegisterThemeElement(Window.Main, "BackgroundColor3", "Background")
-    Window:RegisterThemeElement(Window.MainStroke, "Color", "Border")
-    Window:RegisterThemeElement(Window.TitleBar, "BackgroundColor3", "TitleBar")
-    Window:RegisterThemeElement(Window.TitleBar:FindFirstChildWhichIsA("Frame"), "BackgroundColor3", "TitleBar")
-    Window:RegisterThemeElement(Window.TitleText, "TextColor3", "TextPrimary")
-    Window:RegisterThemeElement(Window.Sidebar, "BackgroundColor3", "Sidebar")
-    Window:RegisterThemeElement(Window.Sidebar:GetChildren()[2], "BackgroundColor3", "Sidebar")
-    Window:RegisterThemeElement(Window.Sidebar:GetChildren()[3], "BackgroundColor3", "Sidebar")
-    Window:RegisterThemeElement(Window.SidebarLine, "BackgroundColor3", "Border")
-
-    -- Update Theme Function
-    function Window:UpdateTheme(themeName, customColors)
-        if THEMES[themeName] then
-            self.CurrentTheme = themeName
-            for k, v in pairs(THEMES[themeName]) do
-                self.CurrentThemeColors[k] = v
-            end
-        end
-        if customColors then
-            for k, v in pairs(customColors) do
-                self.CurrentThemeColors[k] = v
-            end
-        end
-
-        local gradient = Window.AccentBar:FindFirstChildWhichIsA("UIGradient")
-        if gradient then
-            gradient.Color = ColorSequence.new({
-                ColorSequenceKeypoint.new(0, self.CurrentThemeColors.Accent),
-                ColorSequenceKeypoint.new(0.5, Color3.new(1,1,1)),
-                ColorSequenceKeypoint.new(1, self.CurrentThemeColors.Accent)
-            })
-        end
-
-        for _, data in ipairs(self.Elements) do
-            if data.Instance and data.Instance.Parent then
-                local tColor = self.CurrentThemeColors[data.ThemeKey]
-                if tColor then
-                    Tween(data.Instance, {[data.Property] = tColor}, 0.2)
-                end
-            end
-        end
-        
-        Window.Main.BackgroundTransparency = 1 - Window.Opacity
-        Window.Sidebar.BackgroundTransparency = 1 - Window.Opacity
-        Window.TitleBar.BackgroundTransparency = 1 - Window.Opacity
-        for _,c in ipairs(Window.Sidebar:GetChildren()) do if c:IsA("Frame") and c.Name~="SidebarLine" then c.BackgroundTransparency = 1 - Window.Opacity end end
-        for _,c in ipairs(Window.TitleBar:GetChildren()) do if c:IsA("Frame") and c.Name~="AccentBar" then c.BackgroundTransparency = 1 - Window.Opacity end end
-    end
-
-    -- Toggle UI visibility functionality
-    Window.GuiVisible = true
-    function Window:ToggleUI(state)
-        if state == nil then state = not Window.GuiVisible end
-        Window.GuiVisible = state
-        
-        if state then
-            Window.Main.Visible = true
-            Tween(Window.Main, {Size = UDim2.new(0, 600, 0, 420), BackgroundTransparency = 1 - Window.Opacity}, 0.3)
-            Tween(Window.Glow, {ImageTransparency = 0.5}, 0.3)
-        else
-            Tween(Window.Main, {Size = UDim2.new(0, 600, 0, 0), BackgroundTransparency = 1}, 0.3)
-            Tween(Window.Glow, {ImageTransparency = 1}, 0.3)
-            task.delay(0.3, function() if not Window.GuiVisible then Window.Main.Visible = false end end)
-        end
-    end
-
-    -- Universal Input Handling
-    UserInputService.InputBegan:Connect(function(input, gameProcessed)
-        if Window.Binding then
-            if input.UserInputType == Enum.UserInputType.Keyboard or input.UserInputType.Name:find("MouseButton") then
-                local k = input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode or input.UserInputType
-                if k == Enum.KeyCode.Escape or k == Enum.KeyCode.Backspace then
-                    Window._BindTarget.UpdateKey(nil)
-                else
-                    Window._BindTarget.UpdateKey(k)
-                end
-                Window.Binding = false
-            end
-            return
-        end
-        
-        if gameProcessed then return end
-        
-        local k = input.KeyCode ~= Enum.KeyCode.Unknown and input.KeyCode or input.UserInputType
-        
-        if k == Window.ToggleKey then
-            Window:ToggleUI()
-        end
-        
-        if Window.GuiVisible then
-            for _, bind in ipairs(Window.Keybinds) do
-                if bind.Key == k then
-                    bind.Callback()
-                end
-            end
-        end
-    end)
-    
-    -- Notifications
-    Window.ToastContainer = Create("Frame", {
-        Name = "ToastContainer",
-        Size = UDim2.new(0, 250, 1, -40),
-        Position = UDim2.new(1, -270, 0, 20),
-        BackgroundTransparency = 1,
-        ZIndex = 100,
-        Parent = Window.Gui,
-    })
-    Create("UIListLayout", {
-        SortOrder = Enum.SortOrder.LayoutOrder,
-        VerticalAlignment = Enum.VerticalAlignment.Bottom,
-        Padding = UDim.new(0, 10),
-        Parent = Window.ToastContainer
-    })
-    
-    function Window:Notify(title, text, time)
-        local Toast = Create("Frame", {
-            Size = UDim2.new(1, 0, 0, 60),
-            Position = UDim2.new(1, 100, 0, 0),
-            BackgroundColor3 = Window.CurrentThemeColors.Surface,
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-            ZIndex = 100,
-            Parent = Window.ToastContainer,
-            ClipsDescendants = true,
-        }, { Corner(6) })
-        local Stroke = Stroke(Window.CurrentThemeColors.Border, 1)
-        Stroke.Transparency = 1
-        Stroke.Parent = Toast
-        
-        local Accent = Create("Frame", {
-            Size = UDim2.new(0, 3, 1, 0),
-            BackgroundColor3 = Window.CurrentThemeColors.Accent,
-            BorderSizePixel = 0,
-            BackgroundTransparency = 1,
-            ZIndex = 101,
-            Parent = Toast,
-        }, { Corner(3) })
-        
-        local TitleLbl = Create("TextLabel", {
-            Size = UDim2.new(1, -20, 0, 20),
-            Position = UDim2.new(0, 15, 0, 8),
-            BackgroundTransparency = 1,
-            Text = title,
-            TextColor3 = Window.CurrentThemeColors.TextPrimary,
-            TextTransparency = 1,
-            TextSize = 12 * Window.FontSize,
-            Font = FONT_BOLD,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            ZIndex = 101,
-            Parent = Toast,
-        })
-        local TextLbl = Create("TextLabel", {
-            Size = UDim2.new(1, -20, 0, 20),
-            Position = UDim2.new(0, 15, 0, 28),
-            BackgroundTransparency = 1,
-            Text = text,
-            TextColor3 = Window.CurrentThemeColors.TextSecondary,
-            TextTransparency = 1,
-            TextSize = 11 * Window.FontSize,
-            Font = FONT,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            ZIndex = 101,
-            Parent = Toast,
-        })
-        
-        Window:RegisterThemeElement(Toast, "BackgroundColor3", "Surface")
-        Window:RegisterThemeElement(Stroke, "Color", "Border")
-        Window:RegisterThemeElement(Accent, "BackgroundColor3", "Accent")
-        Window:RegisterThemeElement(TitleLbl, "TextColor3", "TextPrimary")
-        Window:RegisterThemeElement(TextLbl, "TextColor3", "TextSecondary")
-        
-        Tween(Toast, {BackgroundTransparency = 0}, 0.3)
-        Tween(Stroke, {Transparency = 0}, 0.3)
-        Tween(Accent, {BackgroundTransparency = 0}, 0.3)
-        Tween(TitleLbl, {TextTransparency = 0}, 0.3)
-        Tween(TextLbl, {TextTransparency = 0}, 0.3)
-        
-        task.delay(time or 3, function()
-            Tween(Toast, {BackgroundTransparency = 1}, 0.3)
-            Tween(Stroke, {Transparency = 1}, 0.3)
-            Tween(Accent, {BackgroundTransparency = 1}, 0.3)
-            Tween(TitleLbl, {TextTransparency = 1}, 0.3)
-            Tween(TextLbl, {TextTransparency = 1}, 0.3)
-            task.delay(0.3, function() Toast:Destroy() end)
-        end)
-    end
-    
-    function Window:Dialog(cfg)
-        if not cfg then return nil end
-        local Title = cfg.Title or "Dialog"
-        local Content = cfg.Content or "Are you sure?"
-        local Buttons = cfg.Buttons or {"Confirm", "Cancel"}
-        local Callback = cfg.Callback or function() end
-        local result = nil
-        local resolved = false
-
-        -- Create overlay
-        local Overlay = Create("TextButton", {
-            Size = UDim2.new(1, 0, 1, 0),
-            BackgroundColor3 = Color3.new(0, 0, 0),
-            BackgroundTransparency = 0.6,
-            Text = "",
-            ZIndex = 999,
-            Parent = Window.Main,
-        }, { Corner(6) })
-        
-        -- Create dialog frame with correct initial position
-        local Dlg = Create("Frame", {
-            Size = UDim2.new(0, 280, 0, 130),
-            Position = UDim2.new(0.5, -140, 0.5, -65),
-            BackgroundColor3 = Window.CurrentThemeColors.Background,
-            BorderSizePixel = 0,
-            ZIndex = 1000,
-            Parent = Overlay,
-            ClipsDescendants = true,
-        }, { Corner(8), Stroke(Window.CurrentThemeColors.Border, 1.5) })
-
-        -- Title label
-        Create("TextLabel", {
-            Size = UDim2.new(1, 0, 0, 24),
-            Position = UDim2.new(0, 0, 0, 12),
-            BackgroundTransparency = 1,
-            Text = Title,
-            TextColor3 = Window.CurrentThemeColors.TextPrimary,
-            TextSize = 14,
-            Font = FONT_BOLD,
-            TextXAlignment = Enum.TextXAlignment.Center,
-            ZIndex = 1001,
-            Parent = Dlg,
-        })
-        
-        -- Content label
-        Create("TextLabel", {
-            Size = UDim2.new(1, -24, 0, 40),
-            Position = UDim2.new(0, 12, 0, 40),
-            BackgroundTransparency = 1,
-            Text = Content,
-            TextColor3 = Window.CurrentThemeColors.TextSecondary,
-            TextSize = 11,
-            Font = FONT,
-            TextWrapped = true,
-            TextXAlignment = Enum.TextXAlignment.Center,
-            TextYAlignment = Enum.TextYAlignment.Center,
-            ZIndex = 1001,
-            Parent = Dlg,
-        })
-
-        -- Button container
-        local BtnContainer = Create("Frame", {
-            Size = UDim2.new(1, -24, 0, 28),
-            Position = UDim2.new(0, 12, 1, -40),
-            BackgroundTransparency = 1,
-            ZIndex = 1001,
-            Parent = Dlg,
-        }, {
-            Create("UIListLayout", {
-                SortOrder = Enum.SortOrder.LayoutOrder,
-                FillDirection = Enum.FillDirection.Horizontal,
-                HorizontalAlignment = Enum.HorizontalAlignment.Center,
-                Padding = UDim.new(0, 10)
-            })
-        })
-
-        -- Create buttons
-        for i, btnText in ipairs(Buttons) do
-            local btnWidth = math.floor((256 - ((#Buttons - 1) * 10)) / #Buttons)
-            local btn = Create("TextButton", {
-                Size = UDim2.new(0, btnWidth, 1, 0),
-                BackgroundColor3 = i == 1 and Window.CurrentThemeColors.Accent or Window.CurrentThemeColors.Surface,
-                Text = btnText,
-                TextColor3 = i == 1 and Window.CurrentThemeColors.TextPrimary or Window.CurrentThemeColors.TextPrimary,
-                TextSize = 11,
-                Font = FONT_BOLD,
-                ZIndex = 1002,
-                Parent = BtnContainer,
-            }, { Corner(4), Stroke(Window.CurrentThemeColors.Border, 1) })
-            
-            btn.MouseButton1Click:Connect(function()
-                if resolved then return end
-                resolved = true
-                result = btnText
-                
-                Tween(Overlay, {BackgroundTransparency = 1}, 0.2):Play()
-                Tween(Dlg, {BackgroundTransparency = 1}, 0.2):Play()
-                task.delay(0.2, function() 
-                    if Overlay and Overlay.Parent then Overlay:Destroy() end 
-                end)
-            end)
-            
-            btn.MouseEnter:Connect(function()
-                Tween(btn, {BackgroundColor3 = Window.CurrentThemeColors.SurfaceAlt}, 0.15):Play()
-            end)
-            btn.MouseLeave:Connect(function()
-                local accentColor = i == 1 and Window.CurrentThemeColors.Accent or Window.CurrentThemeColors.Surface
-                Tween(btn, {BackgroundColor3 = accentColor}, 0.15):Play()
-            end)
-        end
-
-        -- Animate in
-        Tween(Overlay, {BackgroundTransparency = 0.6}, 0.2):Play()
-        
-        -- Wait for result
-        while not resolved do
-            task.wait(0.05)
-        end
-        
-        Callback(result)
-        return result
-    end
-    -- Core Layout functions
-    function Window:SelectTab(tab)
-        if self.ActiveTab == tab then return end
-        if self.ActiveTab then
-            Tween(self.ActiveTab.Btn, {BackgroundColor3 = Window.CurrentThemeColors.Sidebar}, 0.2)
-            Tween(self.ActiveTab.Bar, {BackgroundTransparency = 1}, 0.2)
-            self.ActiveTab.Page.Visible = false
-        end
-        self.ActiveTab = tab
-        Tween(self.ActiveTab.Btn, {BackgroundColor3 = Window.CurrentThemeColors.Surface}, 0.2)
-        Tween(self.ActiveTab.Bar, {BackgroundTransparency = 0}, 0.2)
-        self.ActiveTab.Page.Visible = true
-    end
-
-    function Window:AddTab(config)
-        local tcfg = config or {}
-        local Name = tcfg.Name or "Tab"
-        
-        local Tab = {
-            Name = Name,
-            Window = self,
-            Sections = {},
-        }
-
-        Tab.Btn = Create("TextButton", {
-            Size = UDim2.new(1, 0, 0, 32),
-            BackgroundColor3 = Window.CurrentThemeColors.Sidebar,
-            BorderSizePixel = 0,
-            Text = "",
-            Parent = Window.TabList,
-        }, { Corner(4) })
-        Window:RegisterThemeElement(Tab.Btn, "BackgroundColor3", "Sidebar")
-
-        Tab.Bar = Create("Frame", {
-            Size = UDim2.new(0, 3, 0.5, 0),
-            Position = UDim2.new(0, 4, 0.25, 0),
-            BackgroundColor3 = Window.CurrentThemeColors.Accent,
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-            Parent = Tab.Btn,
-        }, { Corner(3) })
-        Window:RegisterThemeElement(Tab.Bar, "BackgroundColor3", "Accent")
-
-        Tab.Text = Create("TextLabel", {
-            Size = UDim2.new(1, -20, 1, 0),
-            Position = UDim2.new(0, 16, 0, 0),
-            BackgroundTransparency = 1,
-            Text = Name,
-            TextColor3 = Window.CurrentThemeColors.TextPrimary,
-            TextSize = 12 * Window.FontSize,
-            Font = FONT_BOLD,
-            TextXAlignment = Enum.TextXAlignment.Left,
-            Parent = Tab.Btn,
-        })
-        Window:RegisterThemeElement(Tab.Text, "TextColor3", "TextPrimary")
-
-        Tab.Page = Create("ScrollingFrame", {
-            Size = UDim2.new(1, -16, 1, -16),
-            Position = UDim2.new(0, 8, 0, 8),
-            BackgroundTransparency = 1,
-            BorderSizePixel = 0,
-            ScrollBarThickness = 2,
-            ScrollBarImageColor3 = Window.CurrentThemeColors.Border,
-            CanvasSize = UDim2.new(0, 0, 0, 0),
-            AutomaticCanvasSize = Enum.AutomaticSize.Y,
-            Visible = false,
-            Parent = Window.Content,
-        }, {
-            Create("UIListLayout", {SortOrder = Enum.SortOrder.LayoutOrder, Padding = UDim.new(0, 8)})
-        })
-        Window:RegisterThemeElement(Tab.Page, "ScrollBarImageColor3", "Border")
-
-        Tab.Btn.MouseButton1Click:Connect(function() Window:SelectTab(Tab) end)
-        Tab.Btn.MouseEnter:Connect(function() 
-            if Window.ActiveTab ~= Tab then Tween(Tab.Btn, {BackgroundColor3 = Window.CurrentThemeColors.SurfaceAlt}, 0.2) end 
-        end)
-        Tab.Btn.MouseLeave:Connect(function() 
-            if Window.ActiveTab ~= Tab then Tween(Tab.Btn, {BackgroundColor3 = Window.CurrentThemeColors.Sidebar}, 0.2) end 
-        end)
-
-        table.insert(self.Tabs, Tab)
-        if #self.Tabs == 1 then Window:SelectTab(Tab) end
-
-        function Tab:AddSection(scfg)
-            local sName = (scfg and scfg.Name) or "Section"
-
-            local Section = {
-                Name = sName,
-                Window = Window,
-                Elements = {},
-            }
-
-            Section.Frame = Create("Frame", {
-                Size = UDim2.new(1, 0, 0, 10),
-                AutomaticSize = Enum.AutomaticSize.Y,
-                BackgroundColor3 = Window.CurrentThemeColors.Surface,
-                BorderSizePixel = 0,
-                Parent = Tab.Page,
-            }, {
-                Corner(6),
-                Stroke(Window.CurrentThemeColors.Border, 1),
-                Padding(4, 4, 4, 4)
-            })
-            
-            local sLayout = Create("UIListLayout", {
-                SortOrder = Enum.SortOrder.LayoutOrder, 
-                Padding = UDim.new(0, 4)
-            })
-            sLayout.Parent = Section.Frame
-
-            Window:RegisterThemeElement(Section.Frame, "BackgroundColor3", "Surface")
-            Window:RegisterThemeElement(Section.Frame:FindFirstChildWhichIsA("UIStroke"), "Color", "Border")
-
-            Section.Header = Create("TextLabel", {
-                Size = UDim2.new(1, 0, 0, 24),
-                BackgroundTransparency = 1,
-                Text = "  " .. sName,
-                TextColor3 = Window.CurrentThemeColors.TextPrimary,
-                TextSize = 12 * Window.FontSize,
-                Font = FONT_BOLD,
-                TextXAlignment = Enum.TextXAlignment.Left,
-                Parent = Section.Frame,
-            })
-            Window:RegisterThemeElement(Section.Header, "TextColor3", "TextPrimary")
-
-            Section.Underline = Create("Frame", {
-                Size = UDim2.new(1, -8, 0, 1),
-                Position = UDim2.new(0, 4, 1, -1),
-                BackgroundColor3 = Window.CurrentThemeColors.Border,
-                BorderSizePixel = 0,
-                Parent = Section.Header,
-            })
-            Window:RegisterThemeElement(Section.Underline, "BackgroundColor3", "Border")
-
-            -- Element creation methods using factory functions
-            function Section:AddToggle(cfg)
-                return CreateToggle(Window, Section, cfg or {})
-            end
-
-            function Section:AddSlider(cfg)
-                return CreateSlider(Window, Section, cfg or {})
-            end
-
-            function Section:AddButton(cfg)
-                return CreateButton(Window, Section, cfg or {})
-            end
-
-            function Section:AddDropdown(cfg)
-                return CreateDropdown(Window, Section, cfg or {})
-            end
-
-            function Section:AddMultiDropdown(cfg)
-                return CreateMultiDropdown(Window, Section, cfg or {})
-            end
-
-            function Section:AddKeybind(cfg)
-                return CreateKeybind(Window, Section, cfg or {})
-            end
-
-            function Section:AddColorPicker(cfg)
-                return CreateColorPicker(Window, Section, cfg or {})
-            end
-
-            function Section:AddTextBox(cfg)
-                return CreateTextBox(Window, Section, cfg or {})
-            end
-
-            function Section:AddFolder(cfg)
-                return CreateFolder(Window, Section, cfg or {})
-            end
-
-            table.insert(Tab.Sections, Section)
-            return Section
-        end
-
-        return Tab
-    end
-    -- SETTINGS TAB & SAVE/LOAD
-    local SettingsTab = Window:AddTab({ Name = "⚙ Settings" })
-    local ThemeSec = SettingsTab:AddSection({ Name = "Theme Editor" })
-
-    ThemeSec:AddDropdown({
-        Name = "Theme Preset",
-        Options = THEME_PRESETS,
-        Default = Window.CurrentTheme,
-        Callback = function(v) 
-            pcall(function() Window:UpdateTheme(v) end) 
-        end
-    })
-
-    ThemeSec:AddColorPicker({
-        Name = "Accent Color",
-        Default = Window.CurrentThemeColors.Accent,
-        Callback = function(v) 
-            pcall(function() Window:UpdateTheme(Window.CurrentTheme, {Accent = v}) end)
-        end
-    })
-
-    ThemeSec:AddColorPicker({
-        Name = "Background Color",
-        Default = Window.CurrentThemeColors.Background,
-        Callback = function(v) 
-            pcall(function() Window:UpdateTheme(Window.CurrentTheme, {Background = v}) end)
-        end
-    })
-
-    ThemeSec:AddSlider({
-        Name = "Window Opacity",
-        Min = 0.5, Max = 1, Default = 1,
-        Callback = function(v)
-            Window.Opacity = v
-            pcall(function() Window:UpdateTheme(Window.CurrentTheme) end)
-        end
-    })
-
-    ThemeSec:AddSlider({
-        Name = "Font Size Scale",
-        Min = 0.8, Max = 1.2, Default = 1,
-        Callback = function(v)
-            Window.FontSize = v
-        end
-    })
-
-    local UISec = SettingsTab:AddSection({ Name = "Core" })
-    UISec:AddKeybind({
-        Name = "Toggle UI Keybind",
-        Default = Window.ToggleKey,
-        Callback = function() end
-    })
-
-    -- Update ToggleKey when it changes
-    RunService.RenderStepped:Connect(function()
-        local lastKeybind = Window.Keybinds[#Window.Keybinds]
-        if lastKeybind and lastKeybind.Key and lastKeybind.Key ~= Window.ToggleKey then
-            Window.ToggleKey = lastKeybind.Key
-        end
-    end)
-
-    -- CONFIG MANAGER with proper error handling
-    local ConfigSec = SettingsTab:AddSection({ Name = "Config Manager" })
-    local configName = "default"
-    local CONFIG_FOLDER = "NeverLoseUI_Configs"
-
-    -- Detect file API availability
-    local FileAPI = {
-        write = writefile or function() warn("writefile not available") end,
-        read = readfile or function() return "" end,
-        list = listfiles or function() return {} end,
-        make = makefolder or function() end,
-        isFolder = isfolder or function() return false end,
-        exists = isfile or function() return false end,
-    }
-
-    -- Initialize config folder
-    local function InitConfigFolder()
-        local success = pcall(function()
-            if not FileAPI.isFolder(CONFIG_FOLDER) then
-                FileAPI.make(CONFIG_FOLDER)
-            end
-        end)
-        return success
-    end
-
-    -- Load config list
-    local function LoadConfigList()
-        local configs = {}
-        local success = pcall(function()
-            InitConfigFolder()
-            local files = FileAPI.list(CONFIG_FOLDER)
-            for _, f in ipairs(files or {}) do
-                local name = f:match("([^/\\]+)%.json$")
-                if name then
-                    table.insert(configs, name)
-                end
-            end
-        end)
-        return configs
-    end
-
-    -- Save config
-    local function SaveConfig(name)
-        local success, err = pcall(function()
-            InitConfigFolder()
-            local data = HttpService:JSONEncode(Window.ConfigData)
-            FileAPI.write(CONFIG_FOLDER .. "/" .. name .. ".json", data)
-        end)
-        if success then
-            Window:Notify("Config Saved", "Successfully saved '" .. name .. ".json'", 3)
-        else
-            Window:Notify("Save Failed", "Error: " .. tostring(err), 3)
-        end
-        return success
-    end
-
-    -- Load config
-    local function LoadConfig(name)
-        local success, err = pcall(function()
-            local data = FileAPI.read(CONFIG_FOLDER .. "/" .. name .. ".json")
-            if not data or data == "" then
-                error("Config file not found")
-            end
-            local parsed = HttpService:JSONDecode(data)
-            
-            -- Apply config to window
-            Window.ConfigData = parsed
-            
-            -- Notify user
-            Window:Notify("Config Loaded", "'" .. name .. "' applied successfully", 3)
-        end)
-        if not success then
-            Window:Notify("Load Failed", "Error: " .. tostring(err), 3)
-        end
-        return success
-    end
-
-    ConfigSec:AddTextBox({ 
-        Name = "Config Name", 
-        Default = "default", 
-        Callback = function(v) 
-            if v and v:gsub("%s", "") ~= "" then
-                configName = v 
-            end
-        end 
-    })
-
-    local cfgList = LoadConfigList()
-    local cfgDrop = ConfigSec:AddDropdown({ 
-        Name = "Select Config", 
-        Options = cfgList, 
-        Default = cfgList[1] or "default",
-        Callback = function(v) 
-            if v and v:gsub("%s", "") ~= "" then
-                configName = v 
-            end
-        end 
-    })
-
-    ConfigSec:AddButton({ 
-        Name = "Save Config", 
-        Callback = function()
-            if not configName or configName:gsub("%s", "") == "" then
-                Window:Notify("Invalid Name", "Please enter a valid config name", 3)
-                return
-            end
-            SaveConfig(configName)
-            -- Refresh config list
-            cfgList = LoadConfigList()
-            cfgDrop.SetOptions(cfgList)
-        end
-    })
-
-    ConfigSec:AddButton({ 
-        Name = "Load Config", 
-        Callback = function()
-            if not configName or configName:gsub("%s", "") == "" then
-                Window:Notify("Invalid Name", "Please select or enter a config name", 3)
-                return
-            end
-            LoadConfig(configName)
-        end
-    })
-
-    ConfigSec:AddButton({
-        Name = "Delete Config",
-        Callback = function()
-            if not configName or configName:gsub("%s", "") == "" then
-                Window:Notify("Invalid Name", "Please select a config to delete", 3)
-                return
-            end
-            
-            local success = pcall(function()
-                local filePath = CONFIG_FOLDER .. "/" .. configName .. ".json"
-                if FileAPI.exists(filePath) then
-                    -- Roblox doesn't have a standard deletefile, so we overwrite with empty
-                    FileAPI.write(filePath, "{}")
-                    Window:Notify("Config Deleted", "'" .. configName .. "' removed", 3)
-                    cfgList = LoadConfigList()
-                    cfgDrop.SetOptions(cfgList)
-                else
-                    error("Config not found")
-                end
-            end)
-            
-            if not success then
-                Window:Notify("Delete Failed", "Could not delete config", 3)
-            end
-        end
-    })
-    
-    -- HUD & Overlays
-    function Window:AddWatermark(cfg)
-        local wtext = cfg.Name or "NeverLoseUI"
-        local wm = Create("Frame", { Size = UDim2.new(0, 250, 0, 24), Position = UDim2.new(0, 20, 0, 20), BackgroundColor3 = Window.CurrentThemeColors.Surface, BorderSizePixel = 0, Parent = Window.Gui }, { Corner(4), Stroke(Window.CurrentThemeColors.Border, 1) })
-        local acc = Create("Frame", { Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = Window.CurrentThemeColors.Accent, Parent = wm }, { Corner(2) })
-        local lbl = Create("TextLabel", { Size = UDim2.new(1, -16, 1, 0), Position = UDim2.new(0, 8, 0, 0), BackgroundTransparency = 1, TextColor3 = Window.CurrentThemeColors.TextPrimary, TextSize = 11, Font = FONT_BOLD, TextXAlignment = Enum.TextXAlignment.Left, Parent = wm })
-        MakeDraggable(wm)
-        RunService.RenderStepped:Connect(function()
-            local ping = "0"
-            pcall(function() ping = tostring(math.floor(game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue())) end)
-            local fps = tostring(math.floor(1 / RunService.RenderStepped:Wait()))
-            local timeStr = os.date("%H:%M:%S")
-            lbl.Text = wtext .. " | " .. timeStr .. " | " .. fps .. " FPS | " .. ping .. "ms"
-        end)
-    end
-    
-    function Window:AddKeybindList(cfg)
-        local kl = Create("Frame", { Size = UDim2.new(0, 160, 0, 30), AutomaticSize = Enum.AutomaticSize.Y, Position = UDim2.new(0, 20, 0, 60), BackgroundColor3 = Window.CurrentThemeColors.Surface, BorderSizePixel = 0, Parent = Window.Gui }, { Corner(4), Stroke(Window.CurrentThemeColors.Border, 1), Create("UIListLayout", {SortOrder = Enum.SortOrder.LayoutOrder}), Padding(0,0,0,0) })
-        local h = Create("Frame", {Size=UDim2.new(1,0,0,24), BackgroundTransparency=1, Parent=kl})
-        Create("Frame", { Size = UDim2.new(1, 0, 0, 2), BackgroundColor3 = Window.CurrentThemeColors.Accent, Parent = h }, { Corner(2) })
-        Create("TextLabel", { Size = UDim2.new(1, -16, 1, 0), Position=UDim2.new(0,8,0,0), BackgroundTransparency=1, Text="Keybinds", TextColor3=Window.CurrentThemeColors.TextPrimary, TextSize=11, Font=FONT_BOLD, TextXAlignment=Enum.TextXAlignment.Center, Parent=h })
-        MakeDraggable(kl, h)
-    end
-
-    -- CONFIG MANAGER
-    local Configurable = true
-    local cfgFuncs = { write = writefile, read = readfile, list = listfiles, mk = makefolder, isf = isfolder }
-    local ConfigSec = SettingsTab:AddSection({ Name = "Config Manager" })
-    local configName = "default"
-    
-    ConfigSec:AddTextBox({ Name = "Config Name", Default = "default", Callback = function(v) configName = v end })
-    
-    local cfgList = {}
-    pcall(function() 
-        if cfgFuncs.isf and not cfgFuncs.isf("NeverLoseUI_Configs") then cfgFuncs.mk("NeverLoseUI_Configs") end
-        if cfgFuncs.list then
-            for _,f in ipairs(cfgFuncs.list("NeverLoseUI_Configs")) do
-                table.insert(cfgList, f:match("([^/\\\\]+)%.json$") or f)
-            end
-        end
-    end)
-    
-    local cfgDrop = ConfigSec:AddDropdown({ Name = "Select Config", Options = cfgList, Callback = function(v) configName = v end })
-    
-    ConfigSec:AddButton({ Name = "Save Config", Callback = function()
-        pcall(function()
-            if not cfgFuncs.isf("NeverLoseUI_Configs") then cfgFuncs.mk("NeverLoseUI_Configs") end
-            local data = HttpService:JSONEncode(Window.ConfigData)
-            cfgFuncs.write("NeverLoseUI_Configs/" .. configName .. ".json", data)
-            Window:Notify("Config saved!", "Successfully saved to " .. configName .. ".json", 3)
-            -- refresh list
-            cfgList = {}
-            for _,f in ipairs(cfgFuncs.list("NeverLoseUI_Configs")) do table.insert(cfgList, f:match("([^/\\\\]+)%.json$") or f) end
-            cfgDrop.SetOptions(cfgList)
-        end)
-    end})
-    
-    ConfigSec:AddButton({ Name = "Load Config", Callback = function()
-        pcall(function()
-            local data = cfgFuncs.read("NeverLoseUI_Configs/" .. configName .. ".json")
-            local parsed = HttpService:JSONDecode(data)
-            for k,v in pairs(parsed) do Window.ConfigData[k] = v end
-            -- UI elements need their respective set functions called, omitted for brevity.
-            Window:Notify("Loaded!", configName .. " applied securely.", 3)
-        end)
-    end})
-    
-    return Window
+    handle:SetAttribute("SkinName", name)
 end
 
-return NeverLoseUI
+local function cleanKnife(tool)
+    local data = knifeData[tool]
+    if data then
+        if data.track then
+            data.track:Stop()
+            data.track:Destroy()
+            data.track = nil
+        end
+        if data.welds then
+            for _, w in ipairs(data.welds) do
+                if w then w:Destroy() end
+            end
+        end
+        if data.sounds then
+            for _, s in ipairs(data.sounds) do
+                if s and s.Parent then s:Destroy() end
+            end
+        end
+    end
+
+    local mesh = tool:FindFirstChild("Default")
+    if mesh then
+        local children = mesh:GetChildren()
+        for i = 1, #children do
+            local v = children[i]
+            if v.Name == "Handle.R" or v:IsA("Model") or (v:IsA("BasePart") and v.Name ~= "Default") then
+                v:Destroy()
+            end
+        end
+        mesh.Transparency = 0
+    end
+
+    knifeData[tool] = nil
+end
+
+local function applyKnife(char, tool, skin)
+    local skincfg = knifeSkins[skin]
+    if not skincfg then return end
+
+    local hum = char:FindFirstChild("Humanoid")
+    local rhand = char:FindFirstChild("RightHand")
+    if not hum or not rhand then return end
+
+    cleanKnife(tool)
+    knifeData[tool] = {track = nil, welds = {}, sounds = {}}
+    local data = knifeData[tool]
+
+    local mesh = tool:FindFirstChild("Default")
+    if not mesh then return end
+    mesh.Transparency = 1
+
+    local skinmodules = ReplicatedStorage:FindFirstChild("SkinModules")
+    if not skinmodules then return end
+    local knives = skinmodules:FindFirstChild("Knives")
+    if not knives then return end
+
+    local skinmodel = knives:FindFirstChild(skin)
+    if not skinmodel then return end
+    local clone = skinmodel:Clone()
+    clone.Name = skin
+
+    local handr = Instance.new("Part")
+    handr.Name = "Handle.R"
+    handr.Transparency = 1
+    handr.CanCollide = false
+    handr.Anchored = false
+    handr.Size = Vector3.new(0.001, 0.001, 0.001)
+    handr.Massless = true
+    handr.Parent = mesh
+
+    local m6d = Instance.new("Motor6D")
+    m6d.Name = "Handle.R"
+    m6d.Part0 = rhand
+    m6d.Part1 = handr
+    m6d.Parent = handr
+
+    local offset = CFrame.new(skincfg.positionoffset) * CFrame.Angles(math.rad(skincfg.rotationoffset.X), math.rad(skincfg.rotationoffset.Y), math.rad(skincfg.rotationoffset.Z))
+
+    if clone:IsA("Model") then
+        if not clone.PrimaryPart then
+            local children = clone:GetChildren()
+            for i = 1, #children do
+                local c = children[i]
+                if c:IsA("BasePart") then
+                    clone.PrimaryPart = c
+                    break
+                end
+            end
+        end
+        if clone.PrimaryPart then
+            local descendants = clone:GetDescendants()
+            for i = 1, #descendants do
+                local p = descendants[i]
+                if p:IsA("BasePart") then
+                    p.CanCollide = false
+                    p.Massless = true
+                    p.Anchored = false
+                    local w = Instance.new("Weld")
+                    w.Part0 = handr
+                    w.Part1 = p
+                    w.C0 = offset
+                    w.C1 = p.CFrame:ToObjectSpace(clone.PrimaryPart.CFrame)
+                    w.Parent = p
+                    table.insert(data.welds, w)
+                end
+            end
+        end
+        clone.Parent = mesh
+    elseif clone:IsA("BasePart") then
+        clone.CanCollide = false
+        clone.Massless = true
+        clone.Anchored = false
+
+        if clone:IsA("MeshPart") and skincfg.textureid then
+            clone.TextureID = skincfg.textureid
+        end
+
+        if skincfg.particle then
+            local skinassets = ReplicatedStorage:FindFirstChild("SkinAssets")
+            if skinassets then
+                local particlefolder = skinassets:FindFirstChild("GunHandleParticle")
+                if particlefolder then
+                    local particlesource = particlefolder:FindFirstChild(skin)
+                    if particlesource then
+                        local pe = particlesource:FindFirstChild("ParticleEmitter")
+                        if pe then
+                            pe:Clone().Parent = clone
+                        end
+                    end
+                end
+            end
+        end
+
+        clone.Parent = mesh
+        local w = Instance.new("Weld")
+        w.Part0 = handr
+        w.Part1 = clone
+        w.C0 = offset
+        w.Parent = clone
+        table.insert(data.welds, w)
+    end
+
+    local animator = hum:FindFirstChildOfClass("Animator")
+    if not animator then
+        animator = Instance.new("Animator")
+        animator.Parent = hum
+    end
+    if skincfg.animationid and skincfg.animationid ~= "" then
+        local anim = Instance.new("Animation")
+        anim.AnimationId = skincfg.animationid
+        local track = animator:LoadAnimation(anim)
+        track.Looped = false
+        track:Play()
+        data.track = track
+        anim:Destroy()
+        track.Ended:Once(function()
+            if data.track == track then
+                data.track = nil
+            end
+            track:Destroy()
+        end)
+    end
+    if skincfg.soundid and skincfg.soundid ~= "" then
+        local snd = Instance.new("Sound")
+        snd.SoundId = skincfg.soundid
+        snd.Parent = Workspace
+        snd:Play()
+        table.insert(data.sounds, snd)
+        snd.Ended:Connect(function()
+            snd:Destroy()
+        end)
+    end
+
+    tool:SetAttribute("CurrentKnifeSkin", skin)
+end
+
+local function setupTool(tool)
+    if not tool:IsA("Tool") then return end
+    if toolRegistry[tool] then return end
+    toolRegistry[tool] = true
+
+    tool.Equipped:Connect(function()
+        if not getgenv().Lucent['Skins']['Enabled'] then return end
+
+        local char = tool.Parent
+        if char ~= localPlayer.Character then return end
+
+        local skin = getgenv().Lucent['Skins']['Weapons'][tool.Name]
+        if not skin or skin == "" then return end
+
+        if tool.Name == "[Knife]" then
+            applyKnife(char, tool, skin)
+        else
+            applyGun(tool, skin)
+        end
+    end)
+
+    tool.Unequipped:Connect(function()
+        if tool.Name == "[Knife]" then
+            local data = knifeData[tool]
+            if not data then return end
+            if data.welds then
+                for _, w in ipairs(data.welds) do
+                    if w then w:Destroy() end
+                end
+                data.welds = {}
+            end
+            if data.sounds then
+                for _, s in ipairs(data.sounds) do
+                    if s and s.Parent then s:Destroy() end
+                end
+                data.sounds = {}
+            end
+            local mesh = tool:FindFirstChild("Default")
+            if mesh then
+                local children = mesh:GetChildren()
+                for i = 1, #children do
+                    local v = children[i]
+                    if v.Name == "Handle.R" or v:IsA("Model") or (v:IsA("MeshPart") and v.Name ~= "Default") then
+                        v:Destroy()
+                    end
+                end
+                mesh.Transparency = 0
+            end
+        end
+    end)
+
+    if tool.Parent == localPlayer.Character then
+        if not getgenv().Lucent['Skins']['Enabled'] then return end
+
+        local skin = getgenv().Lucent['Skins']['Weapons'][tool.Name]
+        if skin and skin ~= "" then
+            if tool.Name == "[Knife]" then
+                task.spawn(function()
+                    applyKnife(localPlayer.Character, tool, skin)
+                end)
+            else
+                task.spawn(function()
+                    applyGun(tool, skin)
+                end)
+            end
+        end
+    end
+end
+
+local function watchChar(char)
+    if not char then return end
+    local children = char:GetChildren()
+    for i = 1, #children do
+        local v = children[i]
+        if v:IsA("Tool") then
+            setupTool(v)
+        end
+    end
+    char.ChildAdded:Connect(function(v)
+        if v:IsA("Tool") then
+            setupTool(v)
+        end
+    end)
+end
+
+-- Setup skins on backpack tools
+local backpackTools = localPlayer.Backpack:GetChildren()
+for i = 1, #backpackTools do
+    local v = backpackTools[i]
+    if v:IsA("Tool") then
+        setupTool(v)
+    end
+end
+
+localPlayer.Backpack.ChildAdded:Connect(function(v)
+    if v:IsA("Tool") then
+        setupTool(v)
+    end
+end)
+
+if localPlayer.Character then
+    watchChar(localPlayer.Character)
+end
+
+trackConn(localPlayer.CharacterAdded:Connect(function(char)
+    task.wait(0.1)
+    watchChar(char)
+end))
+
+local triggerBotActive = false
+local triggerHold = false
+local lastTriggerTime = 0
+local lastCamUpdate = 0
+local CAM_UPDATE_RATE = 1/60
+local lastVisualUpdate = 0
+local VISUAL_UPDATE_RATE = 1/60
+local currentTargetPlayer = nil
+local leftCtrlHeld = false
+local targetPlayer = nil
+local camLockActive = false
+
+local _pingPredX = 0.12
+local _pingPredY = 0.06
+local _pingPredZ = 0.12
+
+local function getRealPing()
+    local ok, ping = pcall(function()
+        return game:GetService("Stats").Network.ServerStatsItem["Data Ping"]:GetValue()
+    end)
+    if ok and type(ping) == "number" and ping > 0 then return ping end
+    ok, ping = pcall(function()
+        return Players.LocalPlayer:GetNetworkPing() * 1000
+    end)
+    if ok and type(ping) == "number" and ping > 0 then return ping end
+    return 60
+end
+
+trackConn(RunService.Heartbeat:Connect(function()
+    local cfg = getgenv().Lucent['Ping Prediction']
+    if not cfg or not cfg['Enabled'] then return end
+    local ping    = getRealPing()
+    local pingSec = math.clamp(ping, 10, 600) / 1000
+    local smooth  = cfg['Smoothing'] or 0.08
+    local yScale  = cfg['Y Scale']   or 0.45
+    local targetX = pingSec
+    local targetY = pingSec * yScale
+    local targetZ = pingSec
+    _pingPredX = _pingPredX + (targetX - _pingPredX) * smooth
+    _pingPredY = _pingPredY + (targetY - _pingPredY) * smooth
+    _pingPredZ = _pingPredZ + (targetZ - _pingPredZ) * smooth
+    getgenv().Lucent['Silent Aimbot']['Prediction']['X'] = _pingPredX
+    getgenv().Lucent['Silent Aimbot']['Prediction']['Y'] = _pingPredY
+    getgenv().Lucent['Silent Aimbot']['Prediction']['Z'] = _pingPredZ
+    getgenv().Lucent['Camera Aimbot']['Prediction']['X'] = _pingPredX
+    getgenv().Lucent['Camera Aimbot']['Prediction']['Y'] = _pingPredY
+    getgenv().Lucent['Camera Aimbot']['Prediction']['Z'] = _pingPredZ
+    getgenv().Lucent['Trigger Bot']['Prediction']['X']   = _pingPredX
+    getgenv().Lucent['Trigger Bot']['Prediction']['Y']   = _pingPredY
+    getgenv().Lucent['Trigger Bot']['Prediction']['Z']   = _pingPredZ
+end))
+
+local camLockHold = false
+local camLockTarget = nil
+local camLockPart = nil
+local rightClickHeld = false
+local espLabels = {}
+
+local targetLine = Drawing.new("Line")
+targetLine.Visible      = false
+targetLine.Thickness    = 1.5
+targetLine.Transparency = 1
+targetLine.ZIndex       = 999
+
+local ShotgunNames   = { ["Double-Barrel SG"]=true, ["TacticalShotgun"]=true, ["Shotgun"]=true, ["DrumShotgun"]=true }
+local PistolNames    = { ["Revolver"]=true, ["Silencer"]=true, ["Glock"]=true }
+local AutomaticNames = { ["AK-47"]=true, ["AR"]=true, ["Silencer AR"]=true, ["Drum Gun"]=true }
+local RifleNames     = { ["AUG"]=true, ["P90"]=true, ["Rifle"]=true }
+
+local targetCache = {
+    Player = nil, Root = nil, Hitbox = nil, Box = nil,
+    Trigger = nil, TriggerBox = nil,
+    SilentFOV = {}, TriggerFOV = {}
+}
+
+local R15_PARTS = {
+    "Head","UpperTorso","LowerTorso",
+    "LeftUpperArm","LeftLowerArm","LeftHand",
+    "RightUpperArm","RightLowerArm","RightHand",
+    "LeftUpperLeg","LeftLowerLeg","LeftFoot",
+    "RightUpperLeg","RightLowerLeg","RightFoot"
+}
+
+task.spawn(function()
+    local CommunityID = 17215700
+    local function checkMod(Player)
+        if getgenv().Lucent and getgenv().Lucent.Global and getgenv().Lucent.Global["Mod Detector"] then
+            if Player ~= localPlayer and Player:IsInGroup(CommunityID) then
+                localPlayer:Kick("A moderator has joined the game!")
+                return true
+            end
+        end
+        return false
+    end
+    for _, Player in ipairs(Players:GetPlayers()) do
+        if checkMod(Player) then break end
+    end
+    Players.PlayerAdded:Connect(function(Player)
+        task.wait()
+        checkMod(Player)
+    end)
+end)
+
+local function applyPrediction(rootPart, predX, predY, predZ)
+    local velocity = rootPart.Velocity
+    return CFrame.new(rootPart.Position + Vector3.new(velocity.X * predX, velocity.Y * predY, velocity.Z * predZ))
+end
+
+local function getWeaponCategory()
+    local tool = localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Tool")
+    if not tool then return "Others" end
+    local name = tool.Name:gsub("[%[%]]", "")
+    if ShotgunNames[name] then return "Shotguns"
+    elseif PistolNames[name] then return "Pistols"
+    elseif AutomaticNames[name] then return "Automatics"
+    elseif RifleNames[name] then return "Rifles"
+    else return "Others" end
+end
+
+local function getTriggerbotDelay()
+    local cfg = getgenv().Lucent['Trigger Bot']['Delay Settings']
+    if not cfg['Delay Toggle'] then return 0 end
+    local defaultDelay = cfg['Delay'] or 0.095
+    local wc = cfg['Weapon Configuration']
+    if not wc or not wc.Enabled then return defaultDelay end
+    local category = getWeaponCategory()
+    local weaponCfg = wc[category] or wc.Others
+    return weaponCfg['Delay'] or defaultDelay
+end
+
+local function getCameraSmoothness(distance)
+    local cfg = getgenv().Lucent['Camera Aimbot']['Range Smoothing']
+    if not cfg.Enabled then
+        return getgenv().Lucent['Camera Aimbot']['Smoothing'].X, getgenv().Lucent['Camera Aimbot']['Smoothing'].Y
+    end
+    if distance <= 30 then return cfg.Close.X, cfg.Close.Y
+    elseif distance <= 80 then return cfg.Medium.X, cfg.Medium.Y
+    else return cfg.Far.X, cfg.Far.Y end
+end
+
+local function getSplitFOV(section)
+    local fovData = getgenv().Lucent[section].FOV
+    local size = fovData.Size or fovData
+    local cfg = {
+        xLeft  = size["X Right"],  xRight = size["X Left"],
+        yUpper = size["Y Upper"],  yLower = size["Y Lower"],
+        zLeft  = size["Z Right"],  zRight = size["Z Left"]
+    }
+    local wc = fovData["Weapon Configuration"]
+    if wc and wc.Enabled then
+        local cat = getWeaponCategory()
+        local weaponCfg = wc[cat] or wc.Others
+        cfg.xLeft  = weaponCfg["X Right"] or cfg.xLeft
+        cfg.xRight = weaponCfg["X Left"]  or cfg.xRight
+        cfg.yUpper = weaponCfg["Y Upper"] or cfg.yUpper
+        cfg.yLower = weaponCfg["Y Lower"] or cfg.yLower
+        cfg.zLeft  = weaponCfg["Z Right"] or cfg.zLeft
+        cfg.zRight = weaponCfg["Z Left"]  or cfg.zRight
+    end
+    return cfg
+end
+
+local function isMouseInSilentFOV()
+    if not targetPlayer or not targetPlayer.Character then return false end
+    local char = targetPlayer.Character
+    local hrp = char:FindFirstChild("HumanoidRootPart")
+    local upperTorso = char:FindFirstChild("UpperTorso")
+    if not hrp then return false end
+    local fovData = getgenv().Lucent['Silent Aimbot'].FOV
+    local xL  = fovData["X Left"]  or 12
+    local xR  = fovData["X Right"] or 12
+    local yU  = fovData["Y Upper"] or 12
+    local yLo = fovData["Y Lower"] or 12
+    local wc = fovData["Weapon Configuration"]
+    if wc and wc.Enabled then
+        local wcfg = wc[getWeaponCategory()] or wc.Others
+        if wcfg then
+            xL  = wcfg["X Left"]  or xL
+            xR  = wcfg["X Right"] or xR
+            yU  = wcfg["Y Upper"] or yU
+            yLo = wcfg["Y Lower"] or yLo
+        end
+    end
+    local basePos = (upperTorso or hrp).Position
+    local sp = camera:WorldToViewportPoint(basePos)
+    if sp.Z <= 0 then return false end
+    local mousePos  = UserInputService:GetMouseLocation()
+    local targetPos = Vector2.new(sp.X, sp.Y)
+    local vp    = camera.ViewportSize
+    local scale = vp.Y / (2 * math.tan(math.rad(camera.FieldOfView / 2)))
+    local dist3D = (camera.CFrame.Position - basePos).Magnitude
+    local pixW = ((xL + xR) / 2) * scale / dist3D
+    local pixH = ((yU + yLo) / 2) * scale / dist3D
+    local dx = (mousePos.X - targetPos.X) / pixW
+    local dy = (mousePos.Y - targetPos.Y) / pixH
+    return (dx * dx + dy * dy) <= 1
+end
+
+local function isMouseInTriggerFOV()
+    if not targetPlayer or not targetPlayer.Character then return false end
+    local char = targetPlayer.Character
+    local hrp  = char:FindFirstChild("HumanoidRootPart")
+    local upperTorso = char:FindFirstChild("UpperTorso")
+    if not hrp then return false end
+    local fovData = getgenv().Lucent['Trigger Bot'].FOV
+    if fovData['Mode'] == '2D' then
+        local screenPos = camera:WorldToViewportPoint(hrp.Position)
+        if screenPos.Z <= 0 then return false end
+        local mousePos = UserInputService:GetMouseLocation()
+        return (Vector2.new(screenPos.X, screenPos.Y) - mousePos).Magnitude <= (fovData['Radius'] or 150)
+    end
+    local size = fovData.Size or fovData
+    local xL  = size["X Left"]  or 12
+    local xR  = size["X Right"] or 12
+    local yU  = size["Y Upper"] or 12
+    local yLo = size["Y Lower"] or 12
+    local zL  = size["Z Left"]  or 12
+    local zR  = size["Z Right"] or 12
+    local wc = fovData["Weapon Configuration"]
+    if wc and wc.Enabled then
+        local wcfg = wc[getWeaponCategory()] or wc.Others
+        xL=wcfg["X Left"] or xL; xR=wcfg["X Right"] or xR
+        yU=wcfg["Y Upper"] or yU; yLo=wcfg["Y Lower"] or yLo
+        zL=wcfg["Z Left"] or zL; zR=wcfg["Z Right"] or zR
+    end
+    local basePos = (upperTorso or hrp).Position
+    local look    = hrp.CFrame.LookVector
+    local facing  = CFrame.lookAt(Vector3.new(), Vector3.new(look.X, 0, look.Z))
+    local pred = getgenv().Lucent['Trigger Bot'].Prediction
+    if hrp.Velocity.Magnitude > 1 and (pred.X ~= 0 or pred.Y ~= 0 or pred.Z ~= 0) then
+        basePos = basePos + hrp.Velocity * Vector3.new(pred.X, pred.Y, pred.Z)
+    end
+    local boxSize   = Vector3.new(xL+xR, yU+yLo, zL+zR)
+    local boxOffset = facing:VectorToWorldSpace(Vector3.new((xR-xL)/2,(yU-yLo)/2,(zR-zL)/2))
+    local boxCF     = CFrame.new(basePos + boxOffset) * facing
+    local mousePos = UserInputService:GetMouseLocation()
+    local ray = camera:ViewportPointToRay(mousePos.X, mousePos.Y)
+    local lo  = boxCF:PointToObjectSpace(ray.Origin)
+    local ld  = boxCF:VectorToObjectSpace(ray.Direction).Unit
+    local half = boxSize / 2
+    local tmin, tmax = -math.huge, math.huge
+    for _, axis in ipairs({"X","Y","Z"}) do
+        local o, d, s = lo[axis], ld[axis], half[axis]
+        if math.abs(d) < 1e-6 then
+            if o < -s or o > s then return false end
+        else
+            local t1, t2 = (-s-o)/d, (s-o)/d
+            if t1 > t2 then t1, t2 = t2, t1 end
+            tmin = math.max(tmin, t1)
+            tmax = math.min(tmax, t2)
+            if tmin > tmax then return false end
+        end
+    end
+    return tmax >= 0
+end
+
+local function isVisible(origin, targetPart, targetCharacter)
+    if not getgenv().Lucent.Checks['Visible Check'] then return true end
+    if not (targetPart and targetPart:IsA("BasePart")) then return false end
+    local direction = (targetPart.Position - origin)
+    local rayParams = RaycastParams.new()
+    rayParams.FilterType = Enum.RaycastFilterType.Blacklist
+    rayParams.FilterDescendantsInstances = { localPlayer.Character, targetCharacter }
+    rayParams.IgnoreWater = true
+    local result = Workspace:Raycast(origin, direction, rayParams)
+    return not result or result.Instance:IsDescendantOf(targetCharacter)
+end
+
+local function isSameCrew(target)
+    if not getgenv().Lucent.Checks['Crew Check'] then return false end
+    local localCrew = localPlayer:GetAttribute("CrewID")
+    local targetCrew = target:GetAttribute("CrewID")
+    return localCrew and targetCrew and localCrew == targetCrew
+end
+
+local function isSelfKnocked()
+    local bodyEffects = localPlayer.Character and localPlayer.Character:FindFirstChild("BodyEffects")
+    local ko = bodyEffects and bodyEffects:FindFirstChild("K.O")
+    return ko and ko.Value
+end
+
+local function triggerbot()
+    if isSelfKnocked() then return end
+    local char = localPlayer.Character
+    if not char then return end
+    local tool = char:FindFirstChildOfClass("Tool")
+    if not tool or not tool:IsDescendantOf(char) then return end
+    if tool.Name == '[Knife]' then return end
+    -- fire multiple times in same frame to catch VF game server checks
+    tool:Activate()
+    task.defer(function() tool:Activate() end)
+end
+
+local function basicpoint(part)
+    if not part then return nil end
+    local mouseRay = mouse.UnitRay
+    mouseRay = mouseRay.Origin + (mouseRay.Direction * (part.Position - mouseRay.Origin).Magnitude)
+    local point = (mouseRay.Y >= (part.Position - part.Size / 2).Y and mouseRay.Y <= (part.Position + part.Size / 2).Y)
+                  and (part.Position + Vector3.new(0, -part.Position.Y + mouseRay.Y, 0))
+                  or part.Position
+    local check = RaycastParams.new()
+    check.FilterType = Enum.RaycastFilterType.Whitelist
+    check.FilterDescendantsInstances = {part}
+    local ray = Workspace:Raycast(mouseRay, (point - mouseRay), check)
+    if mouse.Target == part then return mouse.Hit.Position end
+    if ray then return ray.Position end
+    return mouse.Hit.Position
+end
+
+local pointCache = {}
+
+local LOWER_BODY = {
+    LeftFoot=true, RightFoot=true,
+    LeftLowerLeg=true, RightLowerLeg=true,
+}
+
+local UPPER_BODY_PARTS = {
+    "Head","UpperTorso","LowerTorso",
+    "LeftUpperArm","RightUpperArm",
+    "LeftLowerArm","RightLowerArm",
+    "LeftHand","RightHand",
+    "LeftUpperLeg","RightUpperLeg",
+}
+
+local function getClosestPoint(character, isCamlock)
+    if not (character and character.Parent) then return nil end
+
+    local mp  = UserInputService:GetMouseLocation()
+    local mx, my = mp.X, mp.Y
+    local cam = camera
+    local cfg = isCamlock and getgenv().Lucent['Camera Aimbot']['Closest Point']
+                           or getgenv().Lucent['Silent Aimbot']['Closest Point']
+    local scale   = math.clamp(cfg['Scale'] or 0.12, 0, 1)
+    local hrp     = character:FindFirstChild("HumanoidRootPart")
+    local groundY = hrp and (hrp.Position.Y - 1.2) or -math.huge
+
+    local parts = {}
+    for _, name in ipairs(UPPER_BODY_PARTS) do
+        if not LOWER_BODY[name] then
+            local p = character:FindFirstChild(name)
+            if p and p:IsA("BasePart") then table.insert(parts, p) end
+        end
+    end
+    if #parts == 0 then
+        local torso = character:FindFirstChild("UpperTorso") or hrp
+        return torso and { Part = torso, Position = torso.Position }
+    end
+
+    -- Cast a ray from camera through the mouse cursor into world space
+    local ray    = cam:ViewportPointToRay(mx, my)
+    local rayDir = ray.Direction  -- already unit length from Roblox
+
+    local bestScreenDist = 1e9
+    local bestPart, bestPos
+
+    for _, part in ipairs(parts) do
+        repeat
+            local cf   = part.CFrame
+            local half = part.Size * 0.5 * (1 - scale)  -- shrink bounds inward
+
+            -- Transform ray to part's local space (no allocation overhead)
+            local lo = cf:PointToObjectSpace(ray.Origin)
+            local ld = cf:VectorToObjectSpace(rayDir)
+
+            -- Closest point on infinite ray to the OBB center (local origin)
+            -- t = dot(center - origin, dir) / dot(dir, dir)
+            local t = math.max(0, (-lo):Dot(ld) / ld:Dot(ld))
+            local onRay = lo + ld * t
+
+            -- Clamp to box extents to get nearest point inside/on the box
+            local cx = math.clamp(onRay.X, -half.X, half.X)
+            local cy = math.clamp(onRay.Y, -half.Y, half.Y)
+            local cz = math.clamp(onRay.Z, -half.Z, half.Z)
+
+            local worldPos = cf:PointToWorldSpace(Vector3.new(cx, cy, cz))
+            if worldPos.Y < groundY then break end
+
+            local sp = cam:WorldToViewportPoint(worldPos)
+            if sp.Z <= 0 then break end
+
+            local d = (sp.X - mx)^2 + (sp.Y - my)^2
+            if d < bestScreenDist then
+                bestScreenDist = d
+                bestPart = part
+                bestPos  = worldPos
+            end
+        until true
+    end
+
+    if not bestPart then
+        local torso = character:FindFirstChild("UpperTorso") or hrp
+        return torso and { Part = torso, Position = torso.Position }
+    end
+    return { Part = bestPart, Position = bestPos }
+end
+
+
+local function getClosestPart(character)
+    if not character then return nil end
+    local mousePos = UserInputService:GetMouseLocation()
+    local bestDist = 1e9; local bestPart
+    for _, name in ipairs(UPPER_BODY_PARTS) do
+        if not LOWER_BODY[name] then
+            local part = character:FindFirstChild(name)
+            if part and part:IsA("BasePart") then
+                local sp = camera:WorldToViewportPoint(part.Position)
+                if sp.Z > 0 then
+                    local dist = (Vector2.new(sp.X, sp.Y) - mousePos).Magnitude
+                    if dist < bestDist then bestDist=dist; bestPart=part end
+                end
+            end
+        end
+    end
+    if bestPart then return { Part = bestPart, Position = bestPart.Position } end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    return hrp and { Part = hrp, Position = hrp.Position }
+end
+
+local function getNearestPoint(character)
+    if not character then return nil end
+    local origin = camera.CFrame.Position
+    local bestDist = 1e9; local bestPart, bestPos
+    for _, name in ipairs(UPPER_BODY_PARTS) do
+        if not LOWER_BODY[name] then
+            local part = character:FindFirstChild(name)
+            if part and part:IsA("BasePart") then
+                local local0 = part.CFrame:PointToObjectSpace(origin)
+                local half   = part.Size * 0.5
+                local clamped = Vector3.new(
+                    math.clamp(local0.X,-half.X,half.X),
+                    math.clamp(local0.Y,-half.Y,half.Y),
+                    math.clamp(local0.Z,-half.Z,half.Z)
+                )
+                local worldClamped = part.CFrame:PointToWorldSpace(clamped)
+                local dist = (worldClamped - origin).Magnitude
+                if dist < bestDist then bestDist=dist; bestPart=part; bestPos=worldClamped end
+            end
+        end
+    end
+    if bestPart then return { Part = bestPart, Position = bestPos } end
+    local hrp = character:FindFirstChild("HumanoidRootPart")
+    return hrp and { Part = hrp, Position = hrp.Position }
+end
+
+local function getClosestBodyPart(character)
+    if not character then return nil end
+    local hitpart = getgenv().Lucent['Silent Aimbot'].HitPart
+    if hitpart == "Closest Point" then return getClosestPoint(character, false)
+    elseif hitpart == "Closest Part" then return getClosestPart(character)
+    elseif hitpart == "Nearest Point" then return getNearestPoint(character) end
+    local part = character:FindFirstChild(hitpart)
+    if part and part:IsA("BasePart") then return { Part = part, Position = part.Position } end
+    return getClosestPoint(character, false)
+end
+
+local function getCamlockBodyPart(character)
+    if not character then return nil end
+    local hitpart = getgenv().Lucent['Camera Aimbot'].HitPart
+    if hitpart == "Closest Point" then return getClosestPoint(character, true)
+    elseif hitpart == "Closest Part" then return getClosestPart(character)
+    elseif hitpart == "Nearest Point" then return getNearestPoint(character) end
+    local part = character:FindFirstChild(hitpart)
+    if part and part:IsA("BasePart") then return { Part = part, Position = part.Position } end
+    return getClosestPoint(character, true)
+end
+
+local function isSelfKnocked()
+    local bodyEffects = localPlayer.Character and localPlayer.Character:FindFirstChild("BodyEffects")
+    local ko = bodyEffects and bodyEffects:FindFirstChild("K.O")
+    return ko and ko.Value
+end
+
+local function getBestTarget()
+    local closestPlayer, closestDist = nil, math.huge
+    local cam   = Workspace.CurrentCamera
+    local myChar = localPlayer.Character
+    local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
+    local camPos = cam.CFrame.Position
+    local mp     = UserInputService:GetMouseLocation()
+
+    -- read camera aimbot FOV radius as the targeting radius
+    local fovRadius = tonumber(getgenv().Lucent['Camera Aimbot'].FOV['Radius']) or 80
+    local vp    = cam.ViewportSize
+
+    for _, player in ipairs(Players:GetPlayers()) do
+        repeat
+            if player == localPlayer then break end
+            local char = player.Character
+            if not char or not char.Parent then break end
+            local root = char:FindFirstChild("HumanoidRootPart")
+            local hum  = char:FindFirstChildOfClass("Humanoid")
+            if not root then break end
+            if hum and hum.Health <= 0 then break end
+            local be      = char:FindFirstChild("BodyEffects")
+            local ko      = be and be:FindFirstChild("K.O")
+            local knocked = be and be:FindFirstChild("Knocked")
+            local grabbed = be and be:FindFirstChild("Grabbed")
+            local ff      = char:FindFirstChildOfClass("ForceField")
+            if getgenv().Lucent.Checks['Knock Check'] and ((ko and ko.Value) or (knocked and knocked.Value)) then break end
+            if getgenv().Lucent.Checks['Forcefield Check'] and ff then break end
+            if getgenv().Lucent.Checks['Crew Check'] and isSameCrew(player) then break end
+            local head = char:FindFirstChild("Head")
+            if getgenv().Lucent.Checks['Visible Check'] and head then
+                if not isVisible(camPos, head, char) then break end
+            end
+            local screenPos = cam:WorldToViewportPoint(root.Position)
+            if screenPos.Z <= 0 then break end
+            -- screen FOV gate: only consider players within radius pixels of mouse
+            local screenDist = (Vector2.new(screenPos.X, screenPos.Y) - mp).Magnitude
+            if screenDist > fovRadius then break end
+            local dist3D = myHRP and (myHRP.Position - root.Position).Magnitude or math.huge
+            if dist3D < closestDist then closestDist=dist3D; closestPlayer=player end
+        until true
+    end
+    return closestPlayer
+end
+
+local function clearTargetIfInvalid()
+    if not targetPlayer or not targetPlayer.Character then
+        targetPlayer=nil; camLockTarget=nil; camLockPart=nil; camLockActive=false
+        pcall(function()
+            if targetCache.Hitbox then targetCache.Hitbox:Destroy() end
+            if targetCache.Box then targetCache.Box:Destroy() end
+            if targetCache.Trigger then targetCache.Trigger:Destroy() end
+            if targetCache.TriggerBox then targetCache.TriggerBox:Destroy() end
+        end)
+        return true
+    end
+    local char    = targetPlayer.Character
+    local root    = char:FindFirstChild("HumanoidRootPart")
+    local head    = char:FindFirstChild("Head")
+    local hum     = char:FindFirstChildOfClass("Humanoid")
+    local be      = char:FindFirstChild("BodyEffects")
+    local ko      = be and be:FindFirstChild("K.O")
+    local knocked = be and be:FindFirstChild("Knocked")
+    local grabbed = be and be:FindFirstChild("Grabbed")
+    local ff      = char:FindFirstChildOfClass("ForceField")
+    local dead    = hum and hum.Health <= 0
+    local checks  = getgenv().Lucent.Checks
+    local invalid = not root or dead
+        or (checks['Knock Check']      and ((ko and ko.Value) or (knocked and knocked.Value)))
+        or (checks['Forcefield Check'] and ff)
+        or (checks['Crew Check']       and isSameCrew(targetPlayer))
+        or (checks['Visible Check']    and head and not isVisible(camera.CFrame.Position, head, char))
+    if invalid then
+        targetPlayer=nil; camLockTarget=nil; camLockPart=nil; camLockActive=false
+        pcall(function()
+            if targetCache.Hitbox then targetCache.Hitbox:Destroy() end
+            if targetCache.Box then targetCache.Box:Destroy() end
+            if targetCache.Trigger then targetCache.Trigger:Destroy() end
+            if targetCache.TriggerBox then targetCache.TriggerBox:Destroy() end
+        end)
+        return true
+    end
+    return false
+end
+
+local function applySpeed()
+    local cfg = getgenv().Lucent["Speed Modifications"]
+    if not cfg or not cfg.Enabled then return end
+    local hum = localPlayer.Character and localPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if not hum then return end
+    local health = hum.Health
+    local speed = 16
+    if cfg["Low Health"] and health <= cfg["Low Health"]["Health Threshold"] then
+        speed = speed * cfg["Low Health"]["Multiplier"]
+    else
+        speed = speed * cfg.Normal["Multiplier"]
+    end
+    hum.WalkSpeed = speed
+end
+
+local function hookHumanoid(humanoid)
+    applySpeed()
+    humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+        if getgenv().Lucent["Speed Modifications"].Enabled then applySpeed() end
+    end)
+    humanoid.HealthChanged:Connect(applySpeed)
+end
+
+trackConn(localPlayer.CharacterAdded:Connect(function(char)
+    local hum = char:WaitForChild("Humanoid", 10)
+    if hum then hookHumanoid(hum) end
+end))
+if localPlayer.Character then
+    local hum = localPlayer.Character:FindFirstChildOfClass("Humanoid")
+    if hum then hookHumanoid(hum) end
+end
+
+local function espMakeLabel(size, zindex)
+    local t = Drawing.new("Text")
+    t.Size=size; t.Center=true; t.Outline=true
+    t.OutlineColor=Color3.fromRGB(0,0,0); t.Color=Color3.fromRGB(255,255,255)
+    t.Font=Drawing.Fonts.Plex; t.Visible=false; t.ZIndex=zindex
+    return t
+end
+
+local function espAdd(player)
+    if player == localPlayer then return end
+    if espLabels[player.UserId] then return end
+    local cfg = getgenv().Lucent['ESP']
+    espLabels[player.UserId] = {
+        player  = player,
+        nametag = espMakeLabel(cfg['Font Size'],     1000),
+        subtag  = espMakeLabel(cfg['Font Size'] - 2, 999),
+    }
+end
+
+local function espRemove(player)
+    local e = espLabels[player.UserId]
+    if not e then return end
+    e.nametag:Remove(); e.subtag:Remove()
+    espLabels[player.UserId] = nil
+end
+
+local function espRefresh()
+    local cfg = getgenv().Lucent['ESP']
+    if not cfg['Enabled'] then
+        for _, e in pairs(espLabels) do e.nametag.Visible=false; e.subtag.Visible=false end
+        targetLine.Visible = false
+        return
+    end
+    for userid, e in pairs(espLabels) do
+        repeat
+            local player = e.player
+            if not player or not player.Parent then
+                e.nametag:Remove(); e.subtag:Remove(); espLabels[userid]=nil; break
+            end
+            local char = player.Character
+            if not char or not char.Parent then e.nametag.Visible=false; e.subtag.Visible=false; break end
+            local hrp  = char:FindFirstChild("HumanoidRootPart")
+            local head = char:FindFirstChild("Head")
+            local hum  = char:FindFirstChildOfClass("Humanoid")
+            if not hrp or not head then e.nametag.Visible=false; e.subtag.Visible=false; break end
+            if hum and hum.Health <= 0 then e.nametag.Visible=false; e.subtag.Visible=false; break end
+            local worldpos = cfg['Name Above']
+                and (head.Position + Vector3.new(0,1.5,0))
+                or  (hrp.Position  - Vector3.new(0,2.8,0))
+            local sp = camera:WorldToViewportPoint(worldpos)
+            if sp.Z <= 0 then e.nametag.Visible=false; e.subtag.Visible=false; break end
+            local pos2d    = Vector2.new(sp.X, sp.Y)
+            local istarget = targetPlayer and targetPlayer == player
+            local col      = istarget and cfg['Target Color'] or cfg['Color']
+            if cfg['Show Display Name'] then
+                e.nametag.Text=player.DisplayName; e.nametag.Color=col
+                e.nametag.Position=pos2d; e.nametag.Visible=true
+            else e.nametag.Visible=false end
+            if cfg['Show Username'] then
+                local offset = cfg['Show Display Name'] and (cfg['Font Size']+2) or 0
+                e.subtag.Text="@"..player.Name; e.subtag.Color=cfg['Username Color']
+                e.subtag.Position=Vector2.new(pos2d.X, pos2d.Y+offset); e.subtag.Visible=true
+            else e.subtag.Visible=false end
+        until true
+    end
+    local tlCfg = cfg['Target Line']
+    if tlCfg and tlCfg['Enabled'] and targetPlayer and targetPlayer.Character then
+        local hrp = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if hrp then
+            local sp = camera:WorldToViewportPoint(hrp.Position)
+            if sp.Z > 0 then
+                local vp = camera.ViewportSize
+                local origin
+                local orig = tlCfg['Origin'] or "Bottom"
+                if orig == "Center" then origin = Vector2.new(vp.X/2, vp.Y/2)
+                elseif orig == "Mouse" then origin = UserInputService:GetMouseLocation()
+                else origin = Vector2.new(vp.X/2, vp.Y) end
+                targetLine.From=origin; targetLine.To=Vector2.new(sp.X, sp.Y)
+                targetLine.Color=tlCfg['Color'] or Color3.fromRGB(255,255,255)
+                targetLine.Thickness=tlCfg['Thickness'] or 1.5
+                targetLine.Transparency=tlCfg['Transparency'] or 0.5
+                targetLine.Visible=true
+            else targetLine.Visible=false end
+        else targetLine.Visible=false end
+    else targetLine.Visible=false end
+end
+
+for _, player in ipairs(Players:GetPlayers()) do
+    if player ~= localPlayer then espAdd(player) end
+    trackConn(player.CharacterAdded:Connect(function(char)
+        espRemove(player); char:WaitForChild("HumanoidRootPart"); task.wait(0.1); espAdd(player)
+    end))
+    trackConn(player.CharacterRemoving:Connect(function() espRemove(player) end))
+end
+trackConn(Players.PlayerAdded:Connect(function(player)
+    if player == localPlayer then return end
+    trackConn(player.CharacterAdded:Connect(function(char)
+        espRemove(player); char:WaitForChild("HumanoidRootPart"); task.wait(0.1); espAdd(player)
+    end))
+    trackConn(player.CharacterRemoving:Connect(function() espRemove(player) end))
+end))
+trackConn(Players.PlayerRemoving:Connect(function(player) espRemove(player) end))
+
+local selectPressed = false
+local camPressed = false
+local triggerPressed = false
+local speedPressed = false
+local superJumpEnabled = false
+
+trackConn(UserInputService.InputBegan:Connect(function(input, gameProcessed)
+    if gameProcessed then return end
+    local key = input.KeyCode
+    local selectBind  = getgenv().Lucent["Binds"].Select
+    local camBind     = getgenv().Lucent["Binds"]["Camera Aimbot"]
+    local triggerBind = getgenv().Lucent["Binds"].Triggerbot
+    local speedBind   = getgenv().Lucent["Binds"].Speed
+    local targetMode  = getgenv().Lucent['Targeting']['Target Mode']
+    if key == Enum.KeyCode.LeftControl then leftCtrlHeld = true return end
+    if key == Enum.KeyCode[selectBind] and targetMode == 'Select' then
+        if not selectPressed then
+            selectPressed = true
+            if targetPlayer then
+                targetPlayer = nil
+                pcall(function()
+                    if targetCache.Hitbox then targetCache.Hitbox:Destroy() end
+                    if targetCache.Box then targetCache.Box:Destroy() end
+                    if targetCache.Trigger then targetCache.Trigger:Destroy() end
+                    if targetCache.TriggerBox then targetCache.TriggerBox:Destroy() end
+                end)
+            else
+                targetPlayer = getBestTarget()
+            end
+        end
+    end
+    if key == Enum.KeyCode[camBind] then
+        if not camPressed then
+            camPressed = true
+            local mode = getgenv().Lucent['Camera Aimbot'].Mode
+            if mode == "Toggle" then
+                camLockActive = not camLockActive
+                if camLockActive then
+                    camLockTarget = targetPlayer
+                    if camLockTarget and camLockTarget.Character then
+                        camLockPart = getCamlockBodyPart(camLockTarget.Character)
+                    end
+                else camLockTarget=nil; camLockPart=nil end
+            elseif mode == "Hold" then
+                camLockHold=true; camLockActive=true; camLockTarget=targetPlayer
+                if camLockTarget and camLockTarget.Character then
+                    camLockPart = getCamlockBodyPart(camLockTarget.Character)
+                end
+            end
+        end
+    end
+    if key == Enum.KeyCode[triggerBind] then
+        if not triggerPressed then
+            triggerPressed = true
+            local mode = getgenv().Lucent['Trigger Bot'].Settings.Mode
+            if mode == "Toggle" then triggerBotActive = not triggerBotActive
+            elseif mode == "Hold" then triggerHold = true end
+        end
+    end
+    if key == Enum.KeyCode[speedBind] then
+        if not speedPressed then
+            speedPressed = true
+            local cfg = getgenv().Lucent["Speed Modifications"]
+            cfg.Enabled = not cfg.Enabled
+            applySpeed()
+        end
+    end
+    local superJumpBind = getgenv().Lucent["Binds"]["Super Jump"]
+    if superJumpBind and key == Enum.KeyCode[superJumpBind] then
+        if getgenv().Lucent["Super Jump"]["Enabled"] then
+            superJumpEnabled = not superJumpEnabled
+        end
+    end
+    local espBind = getgenv().Lucent['Binds']['ESP']
+    if espBind and key == Enum.KeyCode[espBind] then
+        getgenv().Lucent['ESP']['Enabled'] = not getgenv().Lucent['ESP']['Enabled']
+    end
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then rightClickHeld = true end
+end))
+
+trackConn(UserInputService.InputEnded:Connect(function(input)
+    if input.KeyCode == Enum.KeyCode.LeftControl then leftCtrlHeld = false end
+    if input.UserInputType == Enum.UserInputType.MouseButton2 then rightClickHeld = false end
+    local camBind = getgenv().Lucent["Binds"]["Camera Aimbot"]
+    local mode = getgenv().Lucent['Camera Aimbot'].Mode
+    if input.KeyCode == Enum.KeyCode[camBind] then
+        camPressed = false
+        if mode == "Hold" then camLockHold=false; camLockActive=false; camLockTarget=nil; camLockPart=nil end
+    end
+    if input.KeyCode == Enum.KeyCode[getgenv().Lucent["Binds"].Triggerbot] then
+        if getgenv().Lucent['Trigger Bot'].Settings.Mode == "Hold" then triggerHold = false end
+        triggerPressed = false
+    end
+    if input.KeyCode == Enum.KeyCode[getgenv().Lucent["Binds"].Select]    then selectPressed = false end
+    if input.KeyCode == Enum.KeyCode[getgenv().Lucent["Binds"].Speed]     then speedPressed  = false end
+end))
+
+local lastTargetUpdate = 0
+trackConn(RunService.RenderStepped:Connect(function()
+    local mode = getgenv().Lucent['Targeting']['Target Mode']
+    if mode == "Automatic" then
+        -- drop target if they leave FOV
+        if targetPlayer and targetPlayer.Character then
+            local root = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if root then
+                local sp = camera:WorldToViewportPoint(root.Position)
+                local mp = UserInputService:GetMouseLocation()
+                local fovRadius = tonumber(getgenv().Lucent['Camera Aimbot'].FOV['Radius']) or 80
+                if sp.Z <= 0 or (Vector2.new(sp.X, sp.Y) - mp).Magnitude > fovRadius then
+                    targetPlayer = nil; camLockTarget = nil; camLockPart = nil; camLockActive = false
+                end
+            end
+        end
+        local now = tick()
+        if now - lastTargetUpdate >= 0.1 then
+            lastTargetUpdate = now
+            local best = getBestTarget()
+            if best ~= targetPlayer then targetPlayer = best end
+        end
+    end
+    if clearTargetIfInvalid() then currentTargetPlayer=nil; return end
+    if targetPlayer ~= currentTargetPlayer then
+        currentTargetPlayer = targetPlayer
+        pcall(function()
+            if targetCache.Hitbox then targetCache.Hitbox:Destroy(); targetCache.Hitbox=nil end
+            if targetCache.Box    then targetCache.Box:Destroy();    targetCache.Box=nil    end
+            if targetCache.Trigger    then targetCache.Trigger:Destroy();    targetCache.Trigger=nil    end
+            if targetCache.TriggerBox then targetCache.TriggerBox:Destroy(); targetCache.TriggerBox=nil end
+        end)
+    end
+    if not targetPlayer or not targetPlayer.Character then return end
+    local root = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    local upperTorso = targetPlayer.Character:FindFirstChild("UpperTorso")
+    local basePos = upperTorso and upperTorso.Position or root.Position
+    local look = root.CFrame.LookVector
+    local facing = CFrame.lookAt(Vector3.new(), Vector3.new(look.X, 0, look.Z))
+    local showSilent  = getgenv().Lucent['Silent Aimbot'].FOV['Show FOV']
+    local showTrigger = getgenv().Lucent['Trigger Bot'].FOV['Show FOV']
+    local silentFOV  = getSplitFOV('Silent Aimbot')
+    local triggerFOV = getSplitFOV('Trigger Bot')
+
+    if showSilent then
+        if not targetCache.Hitbox then
+            targetCache.Hitbox = Instance.new("Part")
+            targetCache.Hitbox.Name="SilentHitbox_"..targetPlayer.Name
+            targetCache.Hitbox.Anchored=true; targetCache.Hitbox.CanCollide=false
+            targetCache.Hitbox.Transparency=1; targetCache.Hitbox.CanQuery=false
+            targetCache.Hitbox.Parent=Workspace
+        end
+        local size = Vector3.new(silentFOV.xLeft+silentFOV.xRight, silentFOV.yUpper+silentFOV.yLower, silentFOV.zLeft+silentFOV.zRight)
+        local offset = facing:VectorToWorldSpace(Vector3.new((silentFOV.xRight-silentFOV.xLeft)/2,(silentFOV.yUpper-silentFOV.yLower)/2,(silentFOV.zRight-silentFOV.zLeft)/2))
+        targetCache.Hitbox.Size=size; targetCache.Hitbox.CFrame=CFrame.new(basePos+offset)*facing
+        if not targetCache.Box then
+            targetCache.Box=Instance.new("BoxHandleAdornment")
+            targetCache.Box.Adornee=targetCache.Hitbox; targetCache.Box.AlwaysOnTop=true
+            targetCache.Box.ZIndex=10; targetCache.Box.Transparency=0.7; targetCache.Box.Size=size
+            targetCache.Box.Parent=targetCache.Hitbox
+        end
+        targetCache.Box.Color3 = isMouseInSilentFOV() and Color3.new(0,1,0) or Color3.new(1,0,0)
+    else
+        if targetCache.Hitbox then targetCache.Hitbox:Destroy(); targetCache.Hitbox=nil end
+        if targetCache.Box    then targetCache.Box:Destroy();    targetCache.Box=nil    end
+    end
+
+    if showTrigger then
+        if not targetCache.Trigger then
+            targetCache.Trigger=Instance.new("Part")
+            targetCache.Trigger.Name="TriggerHitbox_"..targetPlayer.Name
+            targetCache.Trigger.Anchored=true; targetCache.Trigger.CanCollide=false
+            targetCache.Trigger.Transparency=1; targetCache.Trigger.CanQuery=false
+            targetCache.Trigger.Parent=Workspace
+        end
+        local pred = getgenv().Lucent['Trigger Bot'].Prediction
+        local predPos = root.Position
+        if root.Velocity.Magnitude > 1 then
+            predPos = predPos + root.Velocity * Vector3.new(pred.X, pred.Y, pred.Z)
+        end
+        local size = Vector3.new(triggerFOV.xLeft+triggerFOV.xRight, triggerFOV.yUpper+triggerFOV.yLower, triggerFOV.zLeft+triggerFOV.zRight)
+        local offset = facing:VectorToWorldSpace(Vector3.new((triggerFOV.xRight-triggerFOV.xLeft)/2,(triggerFOV.yUpper-triggerFOV.yLower)/2,(triggerFOV.zRight-triggerFOV.zLeft)/2))
+        local upperPos = upperTorso and upperTorso.Position or predPos
+        targetCache.Trigger.Size=size; targetCache.Trigger.CFrame=CFrame.new(upperPos+offset)*facing
+        if not targetCache.TriggerBox then
+            targetCache.TriggerBox=Instance.new("BoxHandleAdornment")
+            targetCache.TriggerBox.Adornee=targetCache.Trigger; targetCache.TriggerBox.AlwaysOnTop=true
+            targetCache.TriggerBox.ZIndex=10; targetCache.TriggerBox.Transparency=0.7; targetCache.TriggerBox.Size=size
+            targetCache.TriggerBox.Parent=targetCache.Trigger
+        end
+        targetCache.TriggerBox.Color3 = isMouseInTriggerFOV() and Color3.new(0,1,0) or Color3.new(1,1,1)
+    else
+        if targetCache.Trigger    then targetCache.Trigger:Destroy();    targetCache.Trigger=nil    end
+        if targetCache.TriggerBox then targetCache.TriggerBox:Destroy(); targetCache.TriggerBox=nil end
+    end
+
+    if getgenv().Lucent['Trigger Bot'].Enabled and not leftCtrlHeld then
+        local cfg = getgenv().Lucent['Trigger Bot'].Settings
+        local isSelectMode = (mode == "Select")
+        local forceTrigger = isSelectMode and getgenv().Lucent['Select Only Features']['Force Trigger']
+        local active = forceTrigger or (cfg.Mode=="Always") or (cfg.Mode=="Hold" and triggerHold) or (cfg.Mode=="Toggle" and triggerBotActive)
+        if active then
+            local now = tick()
+            local delay = getTriggerbotDelay()
+            if delay > 0 and (now - lastTriggerTime) < delay then return end
+            local distCheck = getgenv().Lucent['Trigger Bot']['Distance Check']
+            if distCheck and distCheck['Enabled'] and not forceTrigger then
+                local myChar = localPlayer.Character
+                local myHRP  = myChar and myChar:FindFirstChild("HumanoidRootPart")
+                local tgtHRP = targetPlayer.Character and targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+                if myHRP and tgtHRP and (myHRP.Position-tgtHRP.Position).Magnitude > distCheck['Max Distance'] then return end
+            end
+            local inRange = forceTrigger or targetMode == "Automatic" or isMouseInTriggerFOV()
+            if inRange then triggerbot(); lastTriggerTime=now end
+        end
+    end
+end))
+
+trackConn(RunService.RenderStepped:Connect(function() espRefresh() end))
+
+local camFOVCircle = nil
+trackConn(RunService.Heartbeat:Connect(function(dt)
+    local camcfg = getgenv().Lucent['Camera Aimbot']
+    if not camcfg.Enabled then
+        if camFOVCircle then camFOVCircle:Remove(); camFOVCircle=nil end
+        return
+    end
+    if camcfg.Mode == "Always" then
+        if targetPlayer and targetPlayer.Character then
+            camLockActive=true; camLockTarget=targetPlayer
+            camLockPart=getCamlockBodyPart(targetPlayer.Character)
+        else camLockActive=false; camLockTarget=nil; camLockPart=nil end
+    end
+    if not (camLockActive and camLockTarget and camLockTarget.Character) then
+        if camFOVCircle then camFOVCircle:Remove(); camFOVCircle=nil end
+        return
+    end
+    if clearTargetIfInvalid() then return end
+    local root = camLockTarget.Character:FindFirstChild("HumanoidRootPart")
+    if not root then return end
+    if getgenv().Lucent.Checks["Self Knock Check"] and isSelfKnocked() then return end
+    local zoom = (camera.CFrame.Position - camera.Focus.Position).Magnitude
+    local isFP       = zoom < 0.6 or camera.CameraType == Enum.CameraType.Track
+    local isShiftLock = UserInputService.MouseBehavior == Enum.MouseBehavior.LockCenter
+    local isTP       = not isFP and not isShiftLock
+
+    local cond = camcfg['Camera Aimbot Conditions'] or {}
+    local allowed = (cond['First Person'] == nil or cond['First Person'] and isFP)
+                 or (cond['Third Person'] == nil or cond['Third Person'] and (isTP or isShiftLock))
+    if not allowed then return end
+    local newPart = getCamlockBodyPart(camLockTarget.Character)
+    if not newPart then return end
+    local fov = camcfg.FOV
+    local inFOV = false
+    local radius = tonumber(fov.Radius) or 155
+    -- skip FOV gate entirely in Automatic mode
+    if getgenv().Lucent['Targeting']['Target Mode'] == "Automatic" then
+        inFOV = true
+    elseif fov["X Left"] then
+        local char=camLockTarget.Character; local hrp=char:FindFirstChild("HumanoidRootPart"); local ut=char:FindFirstChild("UpperTorso")
+        if hrp then
+            local xL=fov["X Left"] or 10; local xR=fov["X Right"] or 10
+            local yU=fov["Y Upper"] or 10; local yLo=fov["Y Lower"] or 10
+            local zL=fov["Z Left"] or 10; local zR=fov["Z Right"] or 10
+            local bPos=(ut or hrp).Position; local lk=hrp.CFrame.LookVector
+            local fc=CFrame.lookAt(Vector3.new(),Vector3.new(lk.X,0,lk.Z))
+            local bs=Vector3.new(xL+xR,yU+yLo,zL+zR)
+            local bo=fc:VectorToWorldSpace(Vector3.new((xR-xL)/2,(yU-yLo)/2,(zR-zL)/2))
+            local bCF=CFrame.new(bPos+bo)*fc
+            local mp=UserInputService:GetMouseLocation(); local ray=camera:ViewportPointToRay(mp.X,mp.Y)
+            local lo=bCF:PointToObjectSpace(ray.Origin); local ld=bCF:VectorToObjectSpace(ray.Direction).Unit
+            local half=bs/2; local tmin,tmax=-math.huge,math.huge
+            for _,ax in ipairs({"X","Y","Z"}) do
+                local o,d,s=lo[ax],ld[ax],half[ax]
+                if math.abs(d)<1e-6 then if o<-s or o>s then tmax=-1 break end
+                else local t1,t2=(-s-o)/d,(s-o)/d; if t1>t2 then t1,t2=t2,t1 end
+                    tmin=math.max(tmin,t1); tmax=math.min(tmax,t2) end
+            end
+            inFOV = tmax >= 0 and tmin <= tmax
+        end
+    else
+        local mousePos=UserInputService:GetMouseLocation(); local sp=camera:WorldToViewportPoint(newPart.Position)
+        inFOV = sp.Z>0 and (Vector2.new(sp.X,sp.Y)-mousePos).Magnitude<=radius
+    end
+    if not inFOV then return end
+    camLockPart = newPart
+    if tick() - lastCamUpdate < CAM_UPDATE_RATE then return end
+    lastCamUpdate = tick()
+    local targetPos = camLockPart.Position
+    local distance = (camera.CFrame.Position - root.Position).Magnitude
+    local smoothX, smoothY = getCameraSmoothness(distance)
+    local humanize = camcfg.Humanize
+    local targetCF = CFrame.new(camera.CFrame.Position, targetPos)
+    if humanize.Bezier and humanize.Enabled then
+        local scale=math.clamp(humanize.Scale or 0.25,0,1); local chaos=scale*15
+        local control=camera.CFrame.Position:Lerp(targetPos,0.5)+Vector3.new(math.random(-chaos,chaos),math.random(-chaos,chaos),math.random(-chaos,chaos))
+        local t=(tick()%1); local bez=camera.CFrame.Position:Lerp(control,t):Lerp(targetPos,t)
+        targetCF=CFrame.new(camera.CFrame.Position,bez)
+        smoothX=smoothX*(1-scale*0.6); smoothY=smoothY*(1-scale*0.6)
+    end
+    local factorX=1-math.exp(-smoothX*dt*60); local factorY=1-math.exp(-smoothY*dt*60)
+    camera.CFrame = camera.CFrame:Lerp(targetCF, math.max(factorX, factorY))
+    if camcfg.FOV['Show FOV'] then
+        if not camFOVCircle then
+            camFOVCircle=Drawing.new("Circle"); camFOVCircle.Thickness=1.5
+            camFOVCircle.Filled=false; camFOVCircle.Transparency=1
+            camFOVCircle.Color=Color3.new(1,1,1); camFOVCircle.Visible=true
+        end
+        local ml=UserInputService:GetMouseLocation()
+        camFOVCircle.Position=Vector2.new(ml.X,ml.Y); camFOVCircle.Radius=radius
+    elseif camFOVCircle then camFOVCircle:Remove(); camFOVCircle=nil end
+end))
+
+-- Pre-compute every RenderStepped so the hook does zero heavy work
+local _silentAimPos  = nil
+local _silentAimPart = nil
+local _silentActive  = false
+local _silentFrame   = 0
+local _silentHitCache = nil
+
+trackConn(RunService.RenderStepped:Connect(function()
+    _silentAimPos  = nil
+    _silentAimPart = nil
+    _silentActive  = false
+    _silentFrame   = _silentFrame + 1
+
+    local sa = getgenv().Lucent['Silent Aimbot']
+    if not sa.Enabled then return end
+    if not targetPlayer or not targetPlayer.Character then _silentHitCache=nil; return end
+
+    -- FOV gate (skip in Automatic mode)
+    local targetMode = getgenv().Lucent['Targeting']['Target Mode']
+    local isSelectMode = targetMode == "Select"
+    local forceHit = isSelectMode and getgenv().Lucent['Select Only Features']['Force Hit']
+    if not forceHit and targetMode ~= "Automatic" and not isMouseInSilentFOV() then return end
+
+    -- distance check
+    local distCheck = sa['Distance Check']
+    if distCheck and distCheck['Enabled'] then
+        local myHRP = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+        local tHRP  = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if myHRP and tHRP and (myHRP.Position - tHRP.Position).Magnitude > distCheck['Max Distance'] then return end
+    end
+
+    -- get hit data every frame for accuracy
+    local hitData
+    if forceHit then
+        local head = targetPlayer.Character:FindFirstChild("Head")
+        if head and head:IsA("BasePart") then hitData = { Part=head, Position=head.Position } end
+    else
+        hitData = getClosestBodyPart(targetPlayer.Character)
+    end
+    if not hitData or not hitData.Part then _silentHitCache=nil; return end
+    _silentHitCache = hitData
+
+    local pos  = hitData.Position
+    local root = targetPlayer.Character:FindFirstChild("HumanoidRootPart")
+    local pred = sa.Prediction
+
+    -- prediction
+    if root and (pred.X ~= 0 or pred.Y ~= 0 or pred.Z ~= 0) then
+        pos = pos + root.Velocity * Vector3.new(pred.X, pred.Y, pred.Z)
+    end
+
+    -- bullet projection
+    local bp = sa['Bullet Projection']
+    if bp and bp['Enabled'] and bp['Distance'] and bp['Distance'] > 0 then
+        local dir = pos - camera.CFrame.Position
+        if dir.Magnitude > 0.01 then pos = pos + dir.Unit * bp['Distance'] end
+    end
+
+    -- clamp Y
+    if root then
+        local cc = sa['Clamp Y']
+        if cc and cc['Enabled'] then
+            local vel = root.Velocity
+            local pingMs = 60
+            pcall(function() pingMs = localPlayer:GetNetworkPing() * 1000 end)
+            local travelTime = math.clamp(pingMs/1000, 0.02, 0.3)
+            local halfH = root.Size.Y * 0.5
+            local minY
+            if cc['Dynamic'] then
+                if math.abs(vel.Y) > 4 then
+                    minY = math.min(root.Position.Y, root.Position.Y + vel.Y*travelTime) - halfH - 0.5
+                else
+                    minY = root.Position.Y - halfH - 0.15
+                end
+            else
+                minY = root.Position.Y - halfH - (cc['Value'] or 0.5)
+            end
+            if pos.Y < minY then
+                if cc['Smooth'] then
+                    local f = math.clamp(cc['Smooth Factor'] or 0.65, 0, 1)
+                    pos = Vector3.new(pos.X, pos.Y + (minY + 0.1 - pos.Y) * (1 - f), pos.Z)
+                else
+                    pos = Vector3.new(pos.X, minY + 0.1, pos.Z)
+                end
+            end
+        end
+    end
+
+    -- anti curve
+    local acCfg = getgenv().Lucent['Anti Curve']
+    if acCfg and acCfg['Enabled'] then
+        local myHRP = localPlayer.Character and localPlayer.Character:FindFirstChild("HumanoidRootPart")
+        if myHRP then
+            local myVel   = myHRP.Velocity
+            local mySpeed = Vector3.new(myVel.X, 0, myVel.Z).Magnitude
+            if mySpeed > 1 then
+                local angle = acCfg['Angle'] or 0.9
+                local wc = acCfg['Weapon Configuration']
+                if wc and wc['Enabled'] then
+                    local wcfg = wc[getWeaponCategory()] or wc['Others']
+                    if wcfg then angle = wcfg['Angle'] or angle end
+                end
+                pos = pos - (Vector3.new(myVel.X,0,myVel.Z).Unit * (mySpeed/16) * angle)
+            end
+        end
+    end
+
+    _silentAimPos  = pos
+    _silentAimPart = hitData.Part
+    _silentActive  = true
+end))
+
+local originalIndex
+originalIndex = hookmetamethod(game, "__index", function(t, k)
+    if not rawequal(t, mouse) then return originalIndex(t, k) end
+    if k ~= "Hit" and k ~= "Target" and k ~= "UnitRay" then return originalIndex(t, k) end
+    if not _silentActive or not _silentAimPos then return originalIndex(t, k) end
+    if k == "Target"  then return _silentAimPart end
+    if k == "Hit"     then return CFrame.new(_silentAimPos) end
+    if k == "UnitRay" then
+        local cp = camera.CFrame.Position
+        return Ray.new(cp, (_silentAimPos - cp).Unit * 1000)
+    end
+    return originalIndex(t, k)
+end)
+
+local originalRandom = math.random
+originalRandom = hookfunction(math.random, function(...)
+    local args = { ... }
+    if checkcaller() then return originalRandom(...) end
+    local isSpreadCall = false
+    if #args == 0 then
+        isSpreadCall = true
+    elseif #args == 2 and type(args[1]) == "number" and type(args[2]) == "number" then
+        local a, b = args[1], args[2]
+        if (a == -0.1 and b == 0.05) or (a >= -0.15 and a <= -0.05 and b >= 0.03 and b <= 0.07) then
+            isSpreadCall = true
+        end
+    elseif #args == 1 and type(args[1]) == "number" then
+        local a = args[1]
+        if a == -0.1 or a == -0.05 or (a >= -0.15 and a <= -0.03) then isSpreadCall = true end
+    end
+    if not isSpreadCall then return originalRandom(...) end
+    local spreadMods = getgenv().Lucent and getgenv().Lucent['Spread Modifications']
+    if not spreadMods or not spreadMods.Enabled then return originalRandom(...) end
+    local character = localPlayer.Character or localPlayer.CharacterAdded:Wait()
+    local tool = character:FindFirstChildOfClass("Tool")
+    local toolName = tool and tool.Name or ""
+    toolName = toolName:gsub("%[",""):gsub("%]","")
+    local weaponConfig = spreadMods[toolName]
+    if not weaponConfig then return originalRandom(...) end
+    local multiplier = 1
+    if spreadMods.Mode == "Randomized" then
+        local min = math.clamp(tonumber(weaponConfig.Min) or 0, 0, 1)
+        local max = math.clamp(tonumber(weaponConfig.Max) or 1, 0, 1)
+        if min > max then min,max=max,min end
+        multiplier = min + (originalRandom() * (max - min))
+    else
+        multiplier = math.clamp(tonumber(weaponConfig.Fixed) or 1, 0, 1)
+    end
+    return originalRandom(...) * multiplier
+end)
+
+local rfLastFire = 0
+local rfFiring   = false
+local rfPatched  = {}  -- cache so we never patch same tool twice
+
+local function rfPatchTool(tool)
+    if rfPatched[tool] then return end
+    rfPatched[tool] = true
+    pcall(function()
+        for _, conn in ipairs(getconnections(tool.Activated)) do
+            repeat
+                local ok, info = pcall(debug.getinfo, conn.Function)
+                if not ok or not info then break end
+                for i = 1, info.nups do
+                    local ok2, val = pcall(debug.getupvalue, conn.Function, i)
+                    if ok2 and type(val) == "number" and val >= 0.05 and val <= 3.0 then
+                        pcall(debug.setupvalue, conn.Function, i, 0)
+                    end
+                end
+            until true
+        end
+    end)
+end
+
+local function rfAllowed(tool)
+    if not tool or tool.Name == '[Knife]' then return false end
+    local cfg = getgenv().Lucent['Rapid Fire']
+    if not cfg or not cfg['Enabled'] then return false end
+    local weapons = cfg['Weapons']
+    if weapons and #weapons > 0 then
+        for _, w in ipairs(weapons) do if tool.Name==w then return true end end
+        return false
+    end
+    return true
+end
+
+local function rfWatchChar(char)
+    if not char then return end
+    char.ChildAdded:Connect(function(obj)
+        if not obj:IsA("Tool") then return end
+        task.wait(0.05)
+        if rfAllowed(obj) then rfPatchTool(obj) end
+    end)
+end
+
+UserInputService.InputBegan:Connect(function(input, gp)
+    if gp or input.UserInputType ~= Enum.UserInputType.MouseButton1 then return end
+    rfFiring = true
+    task.spawn(function()
+        while rfFiring do
+            local char = localPlayer.Character
+            local tool = char and char:FindFirstChildOfClass("Tool")
+            if rfAllowed(tool) then
+                local delay = getgenv().Lucent['Rapid Fire']['Delay'] or 0
+                local now = tick()
+                if now - rfLastFire >= delay then pcall(function() tool:Activate() end); rfLastFire=now end
+                task.wait(delay > 0 and delay or 0.03)
+            else task.wait(0.05) end
+        end
+    end)
+end)
+UserInputService.InputEnded:Connect(function(input)
+    if input.UserInputType == Enum.UserInputType.MouseButton1 then rfFiring = false end
+end)
+
+if localPlayer.Character then rfWatchChar(localPlayer.Character) end
+trackConn(localPlayer.CharacterAdded:Connect(rfWatchChar))
+for _, tool in ipairs(localPlayer.Backpack:GetChildren()) do
+    if rfAllowed(tool) then task.spawn(rfPatchTool, tool) end
+end
+trackConn(localPlayer.Backpack.ChildAdded:Connect(function(tool)
+    if not tool:IsA("Tool") then return end
+    task.wait(0.05)
+    if rfAllowed(tool) then rfPatchTool(tool) end
+end))
+
+-- Hitbox Expander
+trackConn(RunService.Heartbeat:Connect(function()
+    local cfg = getgenv().Lucent['Hitbox Expander']
+    if not cfg or not cfg['Enabled'] then return end
+    
+    for _, player in pairs(Players:GetPlayers()) do
+        if player ~= localPlayer and player.Character then
+            local hrp = player.Character:FindFirstChild("HumanoidRootPart")
+            if hrp then
+                hrp.Size = Vector3.new(cfg['Size'], cfg['Size'], cfg['Size'])
+                hrp.Transparency = 1
+            end
+        end
+    end
+end))
+
+-- Super Jump
+trackConn(RunService.RenderStepped:Connect(function()
+    if superJumpEnabled and getgenv().Lucent['Super Jump']['Enabled'] then
+        local hum = localPlayer.Character and localPlayer.Character:FindFirstChild("Humanoid")
+        if hum then
+            if hum.JumpPower ~= getgenv().Lucent['Super Jump']['Jump Power'] then
+                hum.JumpPower = getgenv().Lucent['Super Jump']['Jump Power']
+            end
+        end
+    end
+end))
+
+-- Advanced Adonis Anti-Cheat Bypass
+task.spawn(function()
+    pcall(function()
+        -- Disable detection by hiding executor signs
+        _G.ExecutorDetected = false
+        getgenv().ExecutorDetected = false
+        
+        -- Hide in environment
+        local oldGetEnv = getfenv
+        getfenv = function(...) 
+            local env = oldGetEnv(...)
+            if env then
+                env.Adonis = nil
+                env.Admin = nil
+            end
+            return env
+        end
+        
+        -- Anti teleport detection
+        local Players = game:GetService("Players")
+        local localPlayer = Players.LocalPlayer
+        if localPlayer and localPlayer.Character then
+            local rootPart = localPlayer.Character:FindFirstChild("HumanoidRootPart")
+            if rootPart then
+                rootPart.CanCollide = true
+                rootPart.CanQuery = true
+            end
+        end
+        
+        -- Block admin commands from executing
+        local scriptInProgress = {}
+        local function preventExecution()
+            local env = getfenv(1)
+            while env do
+                env.script = nil
+                env.owner = nil
+                env.Command = nil
+                env = getfenv(2)
+                if env == getfenv(1) then break end
+            end
+        end
+        
+        preventExecution()
+    end)
+end)
