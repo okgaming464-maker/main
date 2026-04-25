@@ -211,68 +211,77 @@ World:AddColorPicker('FogColor', { Default = Color3.new(0.7, 0.7, 0.7), Text = '
 World:AddSlider('FogDensity', { Text = 'Density', Default = 0.5, Min = 0, Max = 1, Rounding = 2 })
 
 local Crosshair = Tabs.Visuals:AddRightGroupbox('Crosshair')
-Crosshair:AddToggle('Enable', { Text = 'Enable', Default = false })
-Crosshair:AddDropdown('Style', { Values = {'cross', 'dot', 'circle', 't', 'plus', 'gap', 'star', 'heart', 'skull'}, Default = 1, Text = 'Style' })
-Crosshair:AddSlider('Size', { Text = 'Size', Default = 10, Min = 5, Max = 50, Rounding = 0 })
+Crosshair:AddToggle('CrosshairEnable', { Text = 'Enable', Default = false })
+Crosshair:AddDropdown('CrosshairStyle', { Values = {'cross', 'dot', 'circle', 't', 'plus', 'gap', 'star', 'heart', 'skull'}, Default = 1, Text = 'Style' })
+Crosshair:AddSlider('CrosshairSize', { Text = 'Size', Default = 10, Min = 5, Max = 50, Rounding = 0 })
 
 local Radar = Tabs.Visuals:AddLeftGroupbox('Radar')
-Radar:AddToggle('Enable', { Text = 'Enable', Default = false })
-Radar:AddSlider('Range', { Text = 'Range', Default = 100, Min = 50, Max = 500, Rounding = 0 })
+Radar:AddToggle('RadarEnable', { Text = 'Enable', Default = false })
+Radar:AddSlider('RadarRange', { Text = 'Range', Default = 100, Min = 50, Max = 500, Rounding = 0 })
 
 local Watermark = Tabs.Visuals:AddRightGroupbox('Watermark')
-Watermark:AddToggle('Enable', { Text = 'Enable', Default = false })
-Watermark:AddToggle('FPS', { Text = 'FPS', Default = true })
-Watermark:AddToggle('Ping', { Text = 'Ping', Default = true })
+Watermark:AddToggle('WatermarkEnable', { Text = 'Enable', Default = false })
+Watermark:AddToggle('WatermarkFPS', { Text = 'FPS', Default = true })
+Watermark:AddToggle('WatermarkPing', { Text = 'Ping', Default = true })
 
 -- ===== MOVEMENT TAB =====
 
-Tabs.Movement:AddLeftGroupbox('BHop'):AddToggle('Enable', { Text = 'BHop', Default = false })
-Tabs.Movement:AddLeftGroupbox('BHop'):AddSlider('Speed', { Text = 'Speed', Default = 16, Min = 10, Max = 50, Rounding = 0 })
-Tabs.Movement:AddLeftGroupbox('BHop'):AddToggle('AutoStrafe', { Text = 'Auto Strafe', Default = false })
+local BHop = Tabs.Movement:AddLeftGroupbox('BHop')
+BHop:AddToggle('BHopEnable', { Text = 'BHop', Default = false })
+BHop:AddSlider('BHopSpeed', { Text = 'Speed', Default = 16, Min = 10, Max = 50, Rounding = 0 })
+BHop:AddToggle('AutoStrafe', { Text = 'Auto Strafe', Default = false })
 
-Tabs.Movement:AddRightGroupbox('Speed'):AddToggle('SpeedHack', { Text = 'Speed Hack', Default = false })
-Tabs.Movement:AddRightGroupbox('Speed'):AddSlider('SpeedValue', { Text = 'Value', Default = 60, Min = 16, Max = 150, Rounding = 0 })
-Tabs.Movement:AddRightGroupbox('Speed'):AddToggle('InfiniteJump', { Text = 'Infinite Jump', Default = false })
-Tabs.Movement:AddRightGroupbox('Speed'):AddToggle('NoSlow', { Text = 'No Slow', Default = false })
-Tabs.Movement:AddRightGroupbox('Speed'):AddToggle('NoFall', { Text = 'No Fall Dmg', Default = false })
+local Speed = Tabs.Movement:AddRightGroupbox('Speed')
+Speed:AddToggle('SpeedHack', { Text = 'Speed Hack', Default = false })
+Speed:AddSlider('SpeedValue', { Text = 'Value', Default = 60, Min = 16, Max = 150, Rounding = 0 })
+Speed:AddToggle('InfiniteJump', { Text = 'Infinite Jump', Default = false })
+Speed:AddToggle('NoSlow', { Text = 'No Slow', Default = false })
+Speed:AddToggle('NoFall', { Text = 'No Fall Dmg', Default = false })
 
 -- ===== EXTRA TAB =====
 
-Tabs.Extra:AddLeftGroupbox('Stats'):AddToggle('HitNotify', { Text = 'Hit Notify', Default = false })
-Tabs.Extra:AddLeftGroupbox('Stats'):AddToggle('KillFeed', { Text = 'Kill Feed', Default = false })
-Tabs.Extra:AddLeftGroupbox('Stats'):AddToggle('DamageESP', { Text = 'Damage', Default = false })
-Tabs.Extra:AddLeftGroupbox('Stats'):AddToggle('BulletTracer', { Text = 'Bullet', Default = false })
+local Stats = Tabs.Extra:AddLeftGroupbox('Stats')
+Stats:AddToggle('HitNotify', { Text = 'Hit Notify', Default = false })
+Stats:AddToggle('KillFeed', { Text = 'Kill Feed', Default = false })
+Stats:AddToggle('DamageESP', { Text = 'Damage', Default = false })
+Stats:AddToggle('BulletTracer', { Text = 'Bullet', Default = false })
 
-Tabs.Extra:AddRightGroupbox('Extras'):AddToggle('GodMode', { Text = 'God Mode', Default = false })
-Tabs.Extra:AddRightGroupbox('Extras'):AddToggle('InfAmmo', { Text = 'Inf Ammo', Default = false })
-Tabs.Extra:AddRightGroupbox('Extras'):AddToggle('AutoReload', { Text = 'Auto Reload', Default = false })
-Tabs.Extra:AddRightGroupbox('Extras'):AddToggle('AutoPickup', { Text = 'Auto Pickup', Default = false })
-Tabs.Extra:AddRightGroupbox('Extras'):AddToggle('AntiAFK', { Text = 'Anti-AFK', Default = false })
+local Extras = Tabs.Extra:AddRightGroupbox('Extras')
+Extras:AddToggle('GodMode', { Text = 'God Mode', Default = false })
+Extras:AddToggle('InfAmmo', { Text = 'Inf Ammo', Default = false })
+Extras:AddToggle('AutoReload', { Text = 'Auto Reload', Default = false })
+Extras:AddToggle('AutoPickup', { Text = 'Auto Pickup', Default = false })
+Extras:AddToggle('AntiAFK', { Text = 'Anti-AFK', Default = false })
 
-Tabs.Extra:AddRightGroupbox('Effects'):AddToggle('NoFlash', { Text = 'No Flash', Default = false })
-Tabs.Extra:AddRightGroupbox('Effects'):AddToggle('NoSmoke', { Text = 'No Smoke', Default = false })
-Tabs.Extra:AddRightGroupbox('Effects'):AddToggle('NoPaint', { Text = 'No Paint', Default = false })
+local Effects = Tabs.Extra:AddRightGroupbox('Effects')
+Effects:AddToggle('NoFlash', { Text = 'No Flash', Default = false })
+Effects:AddToggle('NoSmoke', { Text = 'No Smoke', Default = false })
+Effects:AddToggle('NoPaint', { Text = 'No Paint', Default = false })
 
 -- ===== SETTINGS TAB =====
 
-Tabs.Settings:AddLeftGroupbox('Camera'):AddSlider('FOV', { Text = 'FOV', Default = 70, Min = 30, Max = 120, Rounding = 0 })
+local CamGroup = Tabs.Settings:AddLeftGroupbox('Camera')
+CamGroup:AddSlider('CameraFOV', { Text = 'FOV', Default = 70, Min = 30, Max = 120, Rounding = 0 })
 
-Tabs.Settings:AddLeftGroupbox('SkinChanger'):AddButton('Open', function() end)
+local SkinGroup = Tabs.Settings:AddLeftGroupbox('SkinChanger')
+SkinGroup:AddButton('Open', function() end)
 
-Tabs.Settings:AddLeftGroupbox('Config'):AddButton('Save', function() SaveManager:Save() end)
-Tabs.Settings:AddLeftGroupbox('Config'):AddButton('Load', function() SaveManager:Load() end)
+local ConfigGroup = Tabs.Settings:AddLeftGroupbox('Config')
+ConfigGroup:AddButton('Save', function() SaveManager:Save() end)
+ConfigGroup:AddButton('Load', function() SaveManager:Load() end)
 
 local MenuGroup = Tabs.Settings:AddRightGroupbox('Menu')
 MenuGroup:AddButton('Unload', function() Library:Unload() end)
-MenuGroup:AddLabel('Keybind'):AddKeyPicker('Keybind', { Default = 'End', Text = 'Menu', NoUI = true })
+MenuGroup:AddLabel('Keybind'):AddKeyPicker('MenuKeybind', { Default = 'End', Text = 'Menu', NoUI = true })
 
-Library.ToggleKeybind = Options.Keybind
+-- FIX: Use Toggles.MenuKeybind instead of Options.Keybind
+Library.ToggleKeybind = Toggles.MenuKeybind
 
 -- Addons Setup
 ThemeManager:SetLibrary(Library)
 SaveManager:SetLibrary(Library)
 SaveManager:IgnoreThemeSettings()
-SaveManager:SetIgnoreIndexes({ 'Keybind' })
+SaveManager:SetIgnoreIndexes({ 'MenuKeybind' })
 ThemeManager:SetFolder('Rivals')
 SaveManager:SetFolder('Rivals')
 SaveManager:BuildConfigSection(Tabs.Settings)
