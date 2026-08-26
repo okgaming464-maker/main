@@ -1,23 +1,23 @@
-local _zzzConfig = shared.zzz and shared.zzz.Foundations and shared.zzz.Foundations.Extras and shared.zzz.Foundations.Extras['Avatar Spoofer Customization']
+local _zzzConfig = shared.zzz and shared.zzz.Character and shared.zzz.Character['Spoofer'] and shared.zzz.Character['Spoofer']['Appearance']
 
 local CONFIG = {
-    target = _zzzConfig and _zzzConfig['Avatar'] and _zzzConfig['Avatar']['UserId'] or "Mqy1",
+    target = _zzzConfig and _zzzConfig['UserId'] or "Mqy1",
     zjqfhm = {
-        enabled    = _zzzConfig and _zzzConfig['Character'] and (_zzzConfig['Character']['Scaling'] ~= '') or true,
-        width      = (_zzzConfig and _zzzConfig['Character'] and _zzzConfig['Character']['Scaling'] == 'Skinny') and 0.52 or (_zzzConfig and _zzzConfig['Character'] and _zzzConfig['Character']['Scaling'] == 'Fat') and 1.5 or 1.0,
-        depth      = (_zzzConfig and _zzzConfig['Character'] and _zzzConfig['Character']['Scaling'] == 'Skinny') and 0.52 or (_zzzConfig and _zzzConfig['Character'] and _zzzConfig['Character']['Scaling'] == 'Fat') and 1.5 or 1.0,
-        height     = (_zzzConfig and _zzzConfig['Character'] and _zzzConfig['Character']['Scaling'] == 'Fat') and 1.2 or 1.0,
-        head       = (_zzzConfig and _zzzConfig['Character'] and _zzzConfig['Character']['Scaling'] == 'Fat') and 1.2 or 1.0,
+        enabled    = _zzzConfig and (_zzzConfig['Scaling'] ~= 'Normal') or true,
+        width      = (_zzzConfig and _zzzConfig['Scaling'] == 'Skinny') and 0.52 or (_zzzConfig and _zzzConfig['Scaling'] == 'Fat') and 1.5 or 1.0,
+        depth      = (_zzzConfig and _zzzConfig['Scaling'] == 'Skinny') and 0.52 or (_zzzConfig and _zzzConfig['Scaling'] == 'Fat') and 1.5 or 1.0,
+        height     = (_zzzConfig and _zzzConfig['Scaling'] == 'Fat') and 1.2 or 1.0,
+        head       = (_zzzConfig and _zzzConfig['Scaling'] == 'Fat') and 1.2 or 1.0,
         proportion = 0.00,
         bodyType   = 0.00,
         enforceIntervalSeconds = 0.8,
     },
     headless = {
-        enabled = _zzzConfig and _zzzConfig['Character'] and _zzzConfig['Character']['Headless'] or false,
+        enabled = _zzzConfig and _zzzConfig['Headless'] or false,
         enforceIntervalSeconds = 0.8,
     },
     korblox = {
-        enabled = _zzzConfig and _zzzConfig['Character'] and _zzzConfig['Character']['Korblox'] or false,
+        enabled = _zzzConfig and _zzzConfig['Korblox'] or false,
         enforceIntervalSeconds = 0.8,
     },
 }
